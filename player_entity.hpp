@@ -46,10 +46,6 @@ public:
     void respawn(sf::Vector2f p);
     bool is_invulnerable() const { return m_invulnerable; }
 
-    // Dash / Melee interface
-	bool is_melee_active() const { return m_melee_active; }
-	sf::FloatRect get_melee_hitbox_world() const;
-
     // Wall colision
     static bool circle_rect_intersect(const sf::CircleShape& c, const sf::RectangleShape& r);
 
@@ -58,7 +54,6 @@ public:
 
     // Hurtbox for combat
     bool bullet_hits_hurtbox(sf::Vector2f point, float radius) const;
-	bool rect_hits_hurtbox(const sf::FloatRect& rect) const;
 
 private:
     void handle_input(sf::Vector2f& dir) const;
@@ -69,8 +64,6 @@ private:
         Idle,
         Run,
         Shoot,
-        Melee,
-        Dash
 	};
 
     // animation loading
@@ -127,17 +120,6 @@ private:
     bool m_shot_fired_this_cast = false;
 
     std::size_t m_shoot_release_frame = 4;
-
-    // melee attack
-    sf::Keyboard::Scancode m_melee{};
-
-    bool m_melee_active = false;
-    bool m_melee_pressed_prev = false;
-
-    sf::Time m_melee_active_window = sf::seconds(0.10f);
-    sf::Time m_melee_active_time = sf::Time::Zero;
-    sf::Time m_melee_cd = sf::seconds(0.5f);
-    sf::Time m_melee_cd_timer = sf::Time::Zero;
 
     // dash
     sf::Keyboard::Scancode m_dash{};

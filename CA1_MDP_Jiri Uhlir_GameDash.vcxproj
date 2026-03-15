@@ -144,8 +144,6 @@ sfml-system-d.lib;sfml-audio-d.lib;%(AdditionalDependencies)</AdditionalDependen
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)external\SFML-3.0.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)external\SFML-3.0.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
-    <ClCompile Include="command.cpp" />
-    <ClCompile Include="command_queue.cpp" />
     <ClCompile Include="component.cpp" />
     <ClCompile Include="container.cpp" />
     <ClCompile Include="game_over_state.cpp" />
@@ -153,40 +151,31 @@ sfml-system-d.lib;sfml-audio-d.lib;%(AdditionalDependencies)</AdditionalDependen
     <ClCompile Include="label.cpp" />
     <ClCompile Include="menu_state.cpp" />
     <ClCompile Include="music_player.cpp" />
-    <ClCompile Include="pause_state.cpp" />
-    <ClCompile Include="player.cpp" />
     <ClCompile Include="player_entity.cpp" />
     <ClCompile Include="settings_state.cpp" />
     <ClCompile Include="sound_id.cpp" />
     <ClCompile Include="sound_player.cpp" />
     <ClCompile Include="state.cpp" />
     <ClCompile Include="statestack.cpp" />
-    <ClCompile Include="texture_holder.cpp" />
+    <ClCompile Include="team_select_state.cpp" />
     <ClCompile Include="title_state.cpp" />
     <ClCompile Include="utility.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="action.hpp" />
     <ClInclude Include="application.hpp" />
     <ClInclude Include="bullet.hpp" />
     <ClInclude Include="button.hpp" />
-    <ClInclude Include="command.hpp" />
-    <ClInclude Include="command_queue.hpp" />
     <ClInclude Include="component.hpp" />
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="container.hpp" />
     <ClInclude Include="fontID.hpp" />
     <ClInclude Include="game_over_state.hpp" />
+    <ClInclude Include="game_settings.hpp" />
     <ClInclude Include="game_state.hpp" />
     <ClInclude Include="label.hpp" />
-    <ClInclude Include="menu_options.hpp" />
     <ClInclude Include="menu_state.hpp" />
-    <ClInclude Include="mission_status.hpp" />
     <ClInclude Include="music_player.hpp" />
-    <ClInclude Include="pause_state.hpp" />
-    <ClInclude Include="player.hpp" />
     <ClInclude Include="player_entity.hpp" />
-    <ClInclude Include="receiver_categories.hpp" />
     <ClInclude Include="resource_holder.hpp" />
     <ClInclude Include="resource_identifiers.hpp" />
     <ClInclude Include="settings_state.hpp" />
@@ -196,7 +185,7 @@ sfml-system-d.lib;sfml-audio-d.lib;%(AdditionalDependencies)</AdditionalDependen
     <ClInclude Include="state.hpp" />
     <ClInclude Include="stateid.hpp" />
     <ClInclude Include="statestack.hpp" />
-    <ClInclude Include="texture_holder.hpp" />
+    <ClInclude Include="team_select_state.hpp" />
     <ClInclude Include="texture_id.hpp" />
     <ClInclude Include="title_state.hpp" />
     <ClInclude Include="utility.hpp" />

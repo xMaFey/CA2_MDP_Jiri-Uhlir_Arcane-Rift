@@ -3,28 +3,38 @@
 // Student ID: D00260335
 // ============================================
 
+
 #pragma once
 
 #include "state.hpp"
 #include "container.hpp"
 #include <SFML/Graphics/Text.hpp>
-#include <SFML/Graphics/RectangleShape.hpp>
-#include <SFML/Graphics/Sprite.hpp>
+#include <string>
 
-class GameOverState : public State
+class TeamSelectState : public State
 {
 public:
-    GameOverState(StateStack& stack, Context context);
+    TeamSelectState(StateStack& stack, Context context);
 
     void Draw(sf::RenderTarget& target) override;
     bool Update(sf::Time dt) override;
     bool HandleEvent(const sf::Event& event) override;
 
 private:
-    sf::RectangleShape m_overlay;
+    void refresh_text();
+
+private:
     sf::Text m_title;
+    sf::Text m_name_text;
+    sf::Text m_fire_text;
+    sf::Text m_water_text;
     sf::Text m_hint;
-    sf::Sprite m_background_sprite;
 
     gui::Container m_gui;
+
+    std::string m_nickname = "Player";
+
+    int m_fire_count = 7;
+    int m_water_count = 5;
+    int m_team_limit = 10;
 };

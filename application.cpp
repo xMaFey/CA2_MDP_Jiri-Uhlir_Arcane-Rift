@@ -9,15 +9,14 @@
 #include "game_state.hpp"
 #include "title_state.hpp"
 #include "menu_state.hpp"
-#include "pause_state.hpp"
 #include "settings_state.hpp"
 #include "game_over_state.hpp"
+#include "team_select_state.hpp"
 
 Application::Application() : m_window(sf::VideoMode({ 1280, 720 }), "States", sf::Style::Close)
-, m_player()
 , m_textures()
 , m_fonts()
-, m_stack(State::Context(m_window, m_textures, m_fonts, m_player, m_sounds, m_music))
+, m_stack(State::Context(m_window, m_textures, m_fonts, m_sounds, m_music, m_settings))
 , m_sounds()
 , m_music()
 , m_scene_texture(m_window.getSize())
@@ -30,8 +29,8 @@ Application::Application() : m_window(sf::VideoMode({ 1280, 720 }), "States", sf
 	m_textures.Load(TextureID::kButtonNormal, "Media/Textures/ButtonNormal.png");
 	m_textures.Load(TextureID::kButtonSelected, "Media/Textures/ButtonSelected.png");
 	m_textures.Load(TextureID::kButtonActivated, "Media/Textures/ButtonPressed.png");
-	m_textures.Load(TextureID::kBluePlayerWin, "Media/Textures/BluePlayerWin.png");
-	m_textures.Load(TextureID::kOrangePlayerWin, "Media/Textures/OrangePlayerWin.png");
+	//m_textures.Load(TextureID::kBluePlayerWin, "Media/Textures/BluePlayerWin.png");
+	//m_textures.Load(TextureID::kOrangePlayerWin, "Media/Textures/OrangePlayerWin.png");
 
 	m_sounds.Load(SoundID::kButton, "Media/Audio/sfx/button.wav");
 	m_sounds.Load(SoundID::kDash, "Media/Audio/sfx/dash.wav");
@@ -130,9 +129,9 @@ void Application::RegisterStates()
 	m_stack.RegisterState<TitleState>(StateID::kTitle);
 	m_stack.RegisterState<MenuState>(StateID::kMenu);
 	m_stack.RegisterState<GameState>(StateID::kGame);
-	m_stack.RegisterState<PauseState>(StateID::kPause);
 	m_stack.RegisterState<SettingsState>(StateID::kSettings);
 	m_stack.RegisterState<GameOverState>(StateID::kGameOver);
+	m_stack.RegisterState<TeamSelectState>(StateID::kTeamSelect);
 }
 
 

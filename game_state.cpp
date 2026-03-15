@@ -43,7 +43,10 @@ GameState::GameState(StateStack& stack, Context context)
     };
 }
 
-static int g_winner = 1;
+bool GameState::HandleEvent(const sf::Event& event)
+{
+    return true;
+}
 
 static float dist2(sf::Vector2f a, sf::Vector2f b)
 {
@@ -277,41 +280,15 @@ bool GameState::Update(sf::Time dt)
         {
             b.kill();
             GetContext().sounds->Play(SoundID::kFireHit);
-            ++m_kills_p1;
+            ++m_fire_kills;
             m_p2.respawn(pick_safe_spawn(m_p1));
         }
         else if (b.owner() == 2 && !m_p1.is_invulnerable() && m_p1.bullet_hits_hurtbox(bp, br))
         {
             b.kill();
             GetContext().sounds->Play(SoundID::kWaterHit);
-            ++m_kills_p2;
+            ++m_water_kills;
             m_p1.respawn(pick_safe_spawn(m_p2));
-        }
-    }
-
-    // P1 melee hits P2
-    if (m_p1.is_melee_active() && !m_p2.is_invulnerable())
-    {
-        if (m_p2.rect_hits_hurtbox(m_p1.get_melee_hitbox_world()))
-        {
-			if (!segment_hits_any_wall(m_p1.position(), m_p2.position(), m_walls))
-            {
-                ++m_kills_p1;
-                m_p2.respawn(pick_safe_spawn(m_p1));
-            }
-        }
-    }
-
-    // P2 melee hits P1
-    if (m_p2.is_melee_active() && !m_p1.is_invulnerable())
-    {
-        if (m_p1.rect_hits_hurtbox(m_p2.get_melee_hitbox_world()))
-        {
-            if (!segment_hits_any_wall(m_p2.position(), m_p1.position(), m_walls))
-            {
-                ++m_kills_p2;
-                m_p1.respawn(pick_safe_spawn(m_p2));
-            }
         }
     }
     
@@ -323,38 +300,16 @@ bool GameState::Update(sf::Time dt)
     
     // HUD
     std::ostringstream ss;
-    ss << "P1 Kills: " << m_kills_p1 << "   |   P2 Kills: " << m_kills_p2 << "   (First to " << m_kills_to_win << ")";
+    ss << "Fire: " << m_fire_kills << "   |   Water: " << m_water_kills << "   (First to " << m_kills_to_win << ")";
     m_hud.setString(ss.str());
             
     // Win condition
-    if (m_kills_p1 >= m_kills_to_win || m_kills_p2 >= m_kills_to_win)
+    if (m_fire_kills >= m_kills_to_win || m_water_kills >= m_kills_to_win)
     {
-        // store winner in Context Player
-        if (GetContext().player)
-        {
-            if (m_kills_p1 >= m_kills_to_win)
-                GetContext().player->SetWinner(Player::Winner::kP1);
-            else
-                GetContext().player->SetWinner(Player::Winner::kP2);
-        }
-
-        // go to win screen
 		RequestStackClear();
         RequestStackPush(StateID::kGameOver);
         return false;
     }
 
-    return true;
-}
-
-bool GameState::HandleEvent(const sf::Event & event)
-{
-    if (const auto* keypress = event.getIf<sf::Event::KeyPressed>())
-    {
-        if (keypress->scancode == sf::Keyboard::Scancode::Escape)
-        {
-            RequestStackPush(StateID::kPause);
-        }
-    }
     return true;
 }

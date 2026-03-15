@@ -4,13 +4,16 @@
 // ============================================
 
 #pragma once
-enum class Action
+#include <string>
+
+struct GameSettings
 {
-	kMoveLeft,
-	kMoveRight,
-	kMoveUp,
-	kMoveDown,
-	kBulletFire,
-	kMissileFire,
-	kActionCount
+	enum class ControlScheme
+	{
+		WASD,
+		Arrows
+	};
+
+	ControlScheme controls = ControlScheme::WASD;
 };
+

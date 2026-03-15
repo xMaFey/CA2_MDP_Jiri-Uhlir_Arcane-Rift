@@ -14,8 +14,8 @@ State::~State()
 {
 }
 
-State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, Player& player, SoundPlayer& sounds, MusicPlayer& music)
-	: window(&window), textures(&textures), fonts(&fonts), player(&player), sounds(&sounds), music(&music)
+State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, SoundPlayer& sounds, MusicPlayer& music, GameSettings& settings)
+	: target(&window), window(&window), textures(&textures), fonts(&fonts), sounds(&sounds), music(&music), settings(&settings)
 {
 }
 

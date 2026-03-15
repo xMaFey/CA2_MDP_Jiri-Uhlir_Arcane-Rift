@@ -10,7 +10,7 @@ enum class StateID
 	kTitle,
 	kMenu,
 	kGame,
-	kPause,
 	kSettings,
-	kGameOver
+	kGameOver,
+	kTeamSelect
 };

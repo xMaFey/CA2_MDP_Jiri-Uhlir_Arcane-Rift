@@ -91,8 +91,7 @@ void PlayerEntity::load_animations()
     const std::vector<std::pair<std::string, std::string>> packs = {
         { "idle", "fight_stance"},
         { "run", "running"},
-        { "fireball", "fireball"},
-        {"melee", "melee_attack"}
+        { "fireball", "fireball"}
     };
 
     const std::vector<std::string> dirs = {
@@ -142,7 +141,6 @@ bool PlayerEntity::set_anim(AnimState st, const std::string& dir)
     std::string prefix = "idle/";
     if (st == AnimState::Run) prefix = "run/";
     if (st == AnimState::Shoot) prefix = "fireball/";
-    if (st == AnimState::Melee) prefix = "melee/";
 
     const std::string key = prefix + dir;
 
@@ -185,8 +183,6 @@ void PlayerEntity::advance_anim(sf::Time dt)
         prefix = "run/";
     if (m_current_anim_state == AnimState::Shoot)
         prefix = "fireball/";
-    if (m_current_anim_state == AnimState::Melee)
-        prefix = "melee/";
 
     const std::string key = prefix + m_current_anim_dir;
 
@@ -257,9 +253,8 @@ void PlayerEntity::set_controls_arrows()
     m_left = sf::Keyboard::Scancode::Left;
     m_right = sf::Keyboard::Scancode::Right;
 
-    m_shoot = sf::Keyboard::Scancode::J;
-	m_dash = sf::Keyboard::Scancode::K;
-	m_melee = sf::Keyboard::Scancode::L;
+    m_shoot = sf::Keyboard::Scancode::Num1;
+	m_dash = sf::Keyboard::Scancode::Num2;
 }
 
 void PlayerEntity::set_controls_wasd()
@@ -269,9 +264,8 @@ void PlayerEntity::set_controls_wasd()
     m_left = sf::Keyboard::Scancode::A;
     m_right = sf::Keyboard::Scancode::D;
 
-    m_shoot = sf::Keyboard::Scancode::Grave; // ` key
-	m_dash = sf::Keyboard::Scancode::Num1;
-	m_melee = sf::Keyboard::Scancode::Num2;
+    m_shoot = sf::Keyboard::Scancode::J;
+	m_dash = sf::Keyboard::Scancode::K;
 }
 
 void PlayerEntity::handle_input(sf::Vector2f& dir) const
@@ -308,17 +302,11 @@ void PlayerEntity::update(sf::Time dt, const std::vector<sf::RectangleShape>& wa
 
     // dash + melee cd
 	m_dash_cd_timer += dt;
-	m_melee_cd_timer += dt;
 
     // detect single press for dash
 	const bool dash_now = sf::Keyboard::isKeyPressed(m_dash);
 	const bool dash_pressed = dash_now && !m_dash_pressed_prev;
 	m_dash_pressed_prev = dash_now;
-
-	// detect single press for melee
-	const bool melee_now = sf::Keyboard::isKeyPressed(m_melee);
-	const bool melee_pressed = melee_now && !m_melee_pressed_prev;
-	m_melee_pressed_prev = melee_now;
 
     // read movement direction - for facing + normal movement
     sf::Vector2f dir;
@@ -360,47 +348,25 @@ void PlayerEntity::update(sf::Time dt, const std::vector<sf::RectangleShape>& wa
     m_body.move(m_velocity * dt.asSeconds());
     resolve_walls(walls);
 
-    // melee active window timing
-    if(m_melee_active)
-    {
-        m_melee_active_time += dt;
-        if (m_melee_active_time >= m_melee_active_window)
-        {
-            m_melee_active = false;
-        }
-	}
-
     // choose anim + direction
 	const bool moving = (m_velocity.x != 0.f || m_velocity.y != 0.f);
     const std::string dirFolder = dir_to_folder(m_last_dir);
 
     // do not override shooting animation with idle/run
     const bool playingShoot = (m_current_anim_state == AnimState::Shoot && !m_anim_finished);
-    const bool playingMelee = (m_current_anim_state == AnimState::Melee && !m_anim_finished);
 
-    if (!playingShoot && !playingMelee)
+    if (!playingShoot)
     {
         if (moving)
         {
-            if(m_current_anim_state != AnimState::Run || m_current_anim_dir != dirFolder)
-			        set_anim(AnimState::Run, dirFolder);
+            if (m_current_anim_state != AnimState::Run || m_current_anim_dir != dirFolder)
+                set_anim(AnimState::Run, dirFolder);
         }
         else
         {
             if (m_current_anim_state != AnimState::Idle || m_current_anim_dir != dirFolder)
-			        set_anim(AnimState::Idle, dirFolder);
+                set_anim(AnimState::Idle, dirFolder);
         }
-    }
-
-    // melee logic, do not override shooting animation
-    if (melee_pressed && !playingShoot && !m_is_shoot_casting && !m_melee_active && m_melee_cd_timer >= m_melee_cd)
-    {
-        m_melee_active = true;
-        m_melee_active_time = sf::Time::Zero;
-        m_melee_cd_timer = sf::Time::Zero;
-
-        // play melee oneshot animation
-        set_anim(AnimState::Melee, dir_to_folder(m_last_dir));
     }
 
     advance_anim(dt);
@@ -427,15 +393,6 @@ void PlayerEntity::update(sf::Time dt, const std::vector<sf::RectangleShape>& wa
 
     // if shoot finished this frame, return to next correct state frame
     if (m_current_anim_state == AnimState::Shoot && m_anim_finished)
-    {
-        if (moving)
-            set_anim(AnimState::Run, dirFolder);
-        else
-            set_anim(AnimState::Idle, dirFolder);
-    }
-
-    // if melee attack finished, return to next correct state frame
-    if (m_current_anim_state == AnimState::Melee && m_anim_finished)
     {
         if (moving)
             set_anim(AnimState::Run, dirFolder);
@@ -498,17 +455,6 @@ void PlayerEntity::draw(sf::RenderTarget& target) const
         target.draw(leftLine, 2, sf::PrimitiveType::Lines);
 		target.draw(rightLine, 2, sf::PrimitiveType::Lines);
     }
-
-	// show melee hitbox when active - FOR TESTING PURPOSES
-    if (m_melee_active)
-    {
-        sf::RectangleShape r;
-		const sf::FloatRect hb = get_melee_hitbox_world();
-		r.setPosition({ hb.position.x, hb.position.y });
-		r.setSize({ hb.size.x, hb.size.y });
-		r.setFillColor(sf::Color(255, 255, 255, 50));
-		target.draw(r);
-	}
 }
 
 sf::Vector2f PlayerEntity::facing_dir() const
@@ -553,76 +499,9 @@ void PlayerEntity::respawn(sf::Vector2f p)
 
 	// reset dash / melee states
     m_is_dashing = false;
-	m_melee_active = false;
 	m_dash_time = sf::Time::Zero;
-	m_melee_active_time = sf::Time::Zero;
 }
 
-sf::FloatRect PlayerEntity::get_melee_hitbox_world() const
-{
-    // "punch" = thin rectangle in facing direction
-    const float melee_range = 60.f;
-    const float melee_width = 18.f;
-	const float radius = m_body.getRadius();
-
-	const sf::Vector2f p = m_body.getPosition() + sf::Vector2f(0.f, -hurtbox_height * 0.65f);
-
-    const std::string dir = dir_to_folder(m_last_dir);
-
-    // create a rectangle centered at cx, cy
-    auto make_rect = [](float cx, float cy, float w, float h)
-        {
-            return sf::FloatRect({ cx - w * 0.5f, cy - h * 0.5f }, { w, h });
-        };
-
-
-    if (dir == "east")
-    {
-        const float cx = p.x + (radius + melee_range * 0.5f);
-        const float cy = p.y;
-        return make_rect(cx, cy, melee_range, melee_width);
-    }
-    if (dir == "west")
-    {
-        const float cx = p.x - (radius + melee_range * 0.5f);
-        const float cy = p.y;
-        return make_rect(cx, cy, melee_range, melee_width);
-    }
-    if (dir == "south")
-    {
-        const float cx = p.x;
-        const float cy = p.y + (radius + melee_range * 0.5f);
-        return make_rect(cx, cy, melee_width, melee_range);
-    }
-    if (dir == "north")
-    {
-        const float cx = p.x;
-        const float cy = p.y - (radius + melee_range * 0.5f);
-        return make_rect(cx, cy, melee_width, melee_range);
-    }
-
-    const float diagSize = melee_range * 0.55f;
-    const float push = radius + diagSize * 0.5f;
-
-    if (dir == "north_east")
-    {
-        return make_rect(p.x + push, p.y - push, diagSize, diagSize);
-    }
-    if (dir == "north_west")
-    {
-        return make_rect(p.x - push, p.y - push, diagSize, diagSize);
-    }
-    if (dir == "south_east")
-    {
-        return make_rect(p.x + push, p.y + push, diagSize, diagSize);
-    }
-    if (dir == "south_west")
-    {
-        return make_rect(p.x - push, p.y + push, diagSize, diagSize);
-    }
-
-    return make_rect(p.x + (radius + melee_range * 0.5f), p.y, melee_range, melee_width);
-}
 
 bool PlayerEntity::circle_rect_intersect(const sf::CircleShape& c, const sf::RectangleShape& r)
 {
@@ -703,21 +582,6 @@ bool PlayerEntity::bullet_hits_hurtbox(sf::Vector2f point, float radius) const
     const float rr = radius + hurtbox_radius;
 
     return (d.x * d.x + d.y * d.y) <= (rr * rr);
-}
-
-bool PlayerEntity::rect_hits_hurtbox(const sf::FloatRect& rect) const
-{
-    const sf::Vector2f feet = m_body.getPosition();
-    const sf::Vector2f torso = feet + sf::Vector2f(0.f, -hurtbox_height);
-
-	const float r = hurtbox_radius;
-
-    sf::FloatRect expanded(
-        { rect.position.x - r, rect.position.y - r },
-        { rect.size.x + 2.f * r, rect.size.y + 2.f * r }
-    );
-
-    return segment_intersect_rect(feet, torso, expanded);
 }
 
 void PlayerEntity::resolve_walls(const std::vector<sf::RectangleShape>& walls)

@@ -42,9 +42,6 @@
     <ClCompile Include="menu_state.cpp">
       <Filter>Core\States</Filter>
     </ClCompile>
-    <ClCompile Include="pause_state.cpp">
-      <Filter>Core\States</Filter>
-    </ClCompile>
     <ClCompile Include="component.cpp">
       <Filter>Core\Source Files</Filter>
     </ClCompile>
@@ -52,12 +49,6 @@
       <Filter>Core\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="button.cpp">
-      <Filter>Core\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="command.cpp">
-      <Filter>Core\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="command_queue.cpp">
       <Filter>Core\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="container.cpp">
@@ -75,9 +66,6 @@
     <ClCompile Include="statestack.cpp">
       <Filter>Core\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="texture_holder.cpp">
-      <Filter>Core\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="utility.cpp">
       <Filter>Core\Source Files</Filter>
     </ClCompile>
@@ -88,9 +76,6 @@
       <Filter>Core\States</Filter>
     </ClCompile>
     <ClCompile Include="bullet.cpp">
-      <Filter>Core\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="player.cpp">
       <Filter>Core\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="game_over_state.cpp">
@@ -105,6 +90,9 @@
     <ClCompile Include="music_player.cpp">
       <Filter>Core\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="team_select_state.cpp">
+      <Filter>Core\States</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="title_state.hpp">
@@ -113,13 +101,7 @@
     <ClInclude Include="menu_state.hpp">
       <Filter>Core\States</Filter>
     </ClInclude>
-    <ClInclude Include="pause_state.hpp">
-      <Filter>Core\States</Filter>
-    </ClInclude>
     <ClInclude Include="component.hpp">
-      <Filter>Core\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="menu_options.hpp">
       <Filter>Core\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="state.hpp">
@@ -131,16 +113,7 @@
     <ClInclude Include="application.hpp">
       <Filter>Core\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="action.hpp">
-      <Filter>Core\Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="button.hpp">
-      <Filter>Core\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="command.hpp">
-      <Filter>Core\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="command_queue.hpp">
       <Filter>Core\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="constants.hpp">
@@ -152,16 +125,10 @@
     <ClInclude Include="fontID.hpp">
       <Filter>Core\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="mission_status.hpp">
-      <Filter>Core\Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="label.hpp">
       <Filter>Core\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="player_entity.hpp">
-      <Filter>Core\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="receiver_categories.hpp">
       <Filter>Core\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource_holder.hpp">
@@ -179,9 +146,6 @@
     <ClInclude Include="stateid.hpp">
       <Filter>Core\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="texture_holder.hpp">
-      <Filter>Core\Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="texture_id.hpp">
       <Filter>Core\Header Files</Filter>
     </ClInclude>
@@ -192,9 +156,6 @@
       <Filter>Core\States</Filter>
     </ClInclude>
     <ClInclude Include="bullet.hpp">
-      <Filter>Core\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="player.hpp">
       <Filter>Core\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="game_over_state.hpp">
@@ -208,6 +169,12 @@
     </ClInclude>
     <ClInclude Include="music_player.hpp">
       <Filter>Core\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="game_settings.hpp">
+      <Filter>Core\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="team_select_state.hpp">
+      <Filter>Core\States</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

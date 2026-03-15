@@ -7,12 +7,11 @@
 #include "fontID.hpp"
 #include "utility.hpp"
 #include "stateid.hpp"
-#include "player.hpp"
 #include "button.hpp"
 
 GameOverState::GameOverState(StateStack& stack, Context context)
     : State(stack, context)
-    , m_background_sprite(context.textures->Get(TextureID::kOrangePlayerWin))
+    , m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
 	, m_overlay()
     , m_title(context.fonts->Get(FontID::kMain))
     , m_hint(context.fonts->Get(FontID::kMain))
@@ -22,12 +21,6 @@ GameOverState::GameOverState(StateStack& stack, Context context)
 
     sf::Vector2f view_size = context.window->getView().getSize();
 
-    auto winner = context.player->GetWinner();
-
-    if(winner == Player::Winner::kP2)
-    {
-        m_background_sprite.setTexture(context.textures->Get(TextureID::kBluePlayerWin));
-    }
 
 	// scale background to fit view
     const sf::Vector2u texSize = m_background_sprite.getTexture().getSize();
@@ -48,14 +41,12 @@ GameOverState::GameOverState(StateStack& stack, Context context)
     m_title.setOutlineThickness(3.f);
     m_title.setOutlineColor(sf::Color::Black);
     
-    if (winner == Player::Winner::kP1) m_title.setString("Player 1 won!");
-    else if (winner == Player::Winner::kP2) m_title.setString("Player 2 won!");
-    else m_title.setString("Game Over");
 
 	Utility::CentreOrigin(m_title);
 	m_title.setPosition({ view_size.x / 2.f, view_size.y / 3.f });
+    m_title.setString("Match Over");
 
-    m_hint.setString("First to 5 kills");
+	m_hint.setString("Press Enter to play again, or Escape for menu");
 	m_hint.setCharacterSize(24);
     m_hint.setFillColor(sf::Color::White);
     m_hint.setOutlineThickness(2.f);
@@ -102,7 +93,7 @@ void GameOverState::Draw(sf::RenderTarget& target)
 
 bool GameOverState::Update(sf::Time)
 {
-    return false;
+    return true;
 }
 
 bool GameOverState::HandleEvent(const sf::Event& event)

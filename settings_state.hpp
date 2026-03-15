@@ -20,7 +20,11 @@ public:
     bool HandleEvent(const sf::Event& event) override;
 
 private:
+    void refresh_text();
+
+private:
     sf::Text m_title;
+    sf::Text m_controls_text;
     sf::Text m_hint;
 
 	gui::Container m_gui;
