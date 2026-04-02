@@ -13,6 +13,7 @@
 TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     : State(stack, context)
     , m_title(context.fonts->Get(FontID::kMain))
+	, m_mode_text(context.fonts->Get(FontID::kMain))
     , m_name_text(context.fonts->Get(FontID::kMain))
     , m_fire_text(context.fonts->Get(FontID::kMain))
     , m_water_text(context.fonts->Get(FontID::kMain))
@@ -24,6 +25,10 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     m_title.setCharacterSize(48);
     Utility::CentreOrigin(m_title);
     m_title.setPosition({ view_size.x * 0.5f, view_size.y * 0.12f });
+
+    m_mode_text.setCharacterSize(22);
+    Utility::CentreOrigin(m_mode_text);
+    m_mode_text.setPosition({ view_size.x * 0.5f, view_size.y * 0.18f });
 
     m_name_text.setCharacterSize(28);
     m_name_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.25f });
@@ -47,7 +52,13 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
             if (m_fire_count >= m_team_limit) return;
             if (m_fire_count > m_water_count) return;
 
+            auto& settings = *GetContext().settings;
+
+            settings.nickname = m_nickname;
+            settings.chosen_team = GameSettings::Team::Fire;
+
             GetContext().sounds->Play(SoundID::kButton);
+
             RequestStackPop();
             RequestStackPush(StateID::kGame);
         });
@@ -60,7 +71,13 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
             if (m_water_count >= m_team_limit) return;
             if (m_water_count > m_fire_count) return;
 
+            auto& settings = *GetContext().settings;
+
+            settings.nickname = m_nickname;
+            settings.chosen_team = GameSettings::Team::Water;
+
             GetContext().sounds->Play(SoundID::kButton);
+
             RequestStackPop();
             RequestStackPush(StateID::kGame);
         });
@@ -70,7 +87,13 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     spectate->setPosition({ view_size.x * 0.72f, view_size.y * 0.72f });
     spectate->SetCallback([this]()
         {
+            auto& settings = *GetContext().settings;
+
+            settings.nickname = m_nickname;
+            settings.chosen_team = GameSettings::Team::Spectator;
+
             GetContext().sounds->Play(SoundID::kButton);
+
             RequestStackPop();
             RequestStackPush(StateID::kGame);
         });
@@ -92,12 +115,23 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     refresh_text();
 }
 
-void TeamSelectState::refresh_text()
-{
-    m_name_text.setString("Nickname: " + m_nickname);
-    m_fire_text.setString("Fire Team: " + std::to_string(m_fire_count) + "/" + std::to_string(m_team_limit));
-    m_water_text.setString("Water Team: " + std::to_string(m_water_count) + "/" + std::to_string(m_team_limit));
-}
+    void TeamSelectState::refresh_text()
+    {
+        const auto& settings = *GetContext().settings;
+
+        std::string mode = "Offline";
+        if (settings.network_role == GameSettings::NetworkRole::Host)
+            mode = "Mode: Host";
+        else if (settings.network_role == GameSettings::NetworkRole::Client)
+            mode = "Mode: Client";
+
+        m_mode_text.setString(mode);
+        Utility::CentreOrigin(m_mode_text);
+
+        m_name_text.setString("Nickname: " + m_nickname);
+        m_fire_text.setString("Fire Team: " + std::to_string(m_fire_count) + "/" + std::to_string(m_team_limit));
+        m_water_text.setString("Water Team: " + std::to_string(m_water_count) + "/" + std::to_string(m_team_limit));
+    }
 
 void TeamSelectState::Draw(sf::RenderTarget& target)
 {
@@ -110,6 +144,7 @@ void TeamSelectState::Draw(sf::RenderTarget& target)
     target.draw(overlay);
 
     target.draw(m_title);
+	target.draw(m_mode_text);
     target.draw(m_name_text);
     target.draw(m_fire_text);
     target.draw(m_water_text);

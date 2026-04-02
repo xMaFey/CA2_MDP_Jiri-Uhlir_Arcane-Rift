@@ -18,6 +18,7 @@
 #include <string>
 #include <filesystem>
 #include <optional>
+#include "player_input.hpp"
 
 class PlayerEntity
 {
@@ -29,18 +30,15 @@ public:
 
     void set_color(const sf::Color& c);
 
-    // Controls
-    void set_controls_arrows();
-    void set_controls_wasd();
 
-    void update(sf::Time dt, const std::vector<sf::RectangleShape>& walls);
+    void update(sf::Time dt, const PlayerInput& input, const std::vector<sf::RectangleShape>& walls);
     void draw(sf::RenderTarget& target) const;
 
 	// Shooting interface
     bool can_shoot() const;
     sf::Vector2f facing_dir() const;
 	sf::Vector2f get_projectile_spawn_point(float projectile_radius) const;
-    void try_start_shoot_cast();
+    void try_start_shoot_cast(bool shootHeld);
     bool consume_shot_event();
 
     void respawn(sf::Vector2f p);
@@ -56,7 +54,6 @@ public:
     bool bullet_hits_hurtbox(sf::Vector2f point, float radius) const;
 
 private:
-    void handle_input(sf::Vector2f& dir) const;
     void resolve_walls(const std::vector<sf::RectangleShape>& walls);
 
     enum class AnimState
@@ -106,14 +103,6 @@ private:
     sf::Time m_shoot_timer = sf::Time::Zero;
 
     // controls
-    // movement
-    sf::Keyboard::Scancode m_up{};
-    sf::Keyboard::Scancode m_down{};
-    sf::Keyboard::Scancode m_left{};
-    sf::Keyboard::Scancode m_right{};
-
-    // shooting
-    sf::Keyboard::Scancode m_shoot{};
 
     bool m_is_shoot_casting = false;
     bool m_shot_event_ready = false;
@@ -121,10 +110,6 @@ private:
 
     std::size_t m_shoot_release_frame = 4;
 
-    // dash
-    sf::Keyboard::Scancode m_dash{};
-
-    bool m_dash_pressed_prev = false;
     bool m_is_dashing = false;
     sf::Time m_dash_duration = sf::seconds(0.12f);
     sf::Time m_dash_time = sf::Time::Zero;

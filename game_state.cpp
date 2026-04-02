@@ -9,23 +9,65 @@
 #include <algorithm>
 #include <sstream>
 #include <random>
+#include <iostream>
+#include <SFML/Network/IpAddress.hpp>
 
 GameState::GameState(StateStack& stack, Context context)
     : State(stack, context)
     , m_window(*context.window)
     , m_hud(context.fonts->Get(FontID::kMain))
 {
+	auto& settings = *GetContext().settings;
+
     GetContext().music->Stop();
 
-    build_map();
+    if (GetContext().network)
+    {
+        auto& network = *GetContext().network;
 
-    m_p1.set_controls_wasd();
+        if (settings.network_role == GameSettings::NetworkRole::Host)
+        {
+            const bool ok = network.start_host(settings.server_port);
+            std::cout << (ok ? "Host started\n" : "Host failed\n");
+        }
+        else if (settings.network_role == GameSettings::NetworkRole::Client)
+        {
+            const auto ip = sf::IpAddress::resolve(settings.server_ip);
+
+            bool ok = false;
+            if (ip.has_value())
+            {
+                ok = network.start_client(*ip, settings.server_port);
+            }
+
+            std::cout << (ok ? "Client connected\n" : "Client failed to connect\n");
+        }
+        else
+        {
+            network.disconnect();
+        }
+    }
+
+    build_map();
+        
     m_p1.set_color(sf::Color(255, 140, 90));
     m_p1.set_position({ 260.f, 360.f });
     m_p1.set_animation_root("Media/Assets/Characters/wizard_orange/animations/");
 
+    // DEBUG
+    if (settings.chosen_team == GameSettings::Team::Fire)
+    {
+        std::cout << settings.nickname << " joined Fire\n";
+    }
+    else if (settings.chosen_team == GameSettings::Team::Water)
+    {
+        std::cout << settings.nickname << " joined Water\n";
+    }
+    else
+    {
+        std::cout << settings.nickname << " is Spectator\n";
+    }
 
-    m_p2.set_controls_arrows();
     m_p2.set_color(sf::Color(70, 200, 255));
     m_p2.set_position({ 1020.f, 360.f });
     m_p2.set_animation_root("Media/Assets/Characters/wizard_blue/animations/");
@@ -41,6 +83,31 @@ GameState::GameState(StateStack& stack, Context context)
         {1130.f, 620.f},
         {640.f, 360.f}
     };
+}
+
+PlayerInput GameState::build_input_from_keybinds(const PlayerKeybinds& keys, bool& dashPrev)
+{
+    PlayerInput input;
+
+    if (sf::Keyboard::isKeyPressed(keys.up))    input.move.y -= 1.f;
+    if (sf::Keyboard::isKeyPressed(keys.down))  input.move.y += 1.f;
+    if (sf::Keyboard::isKeyPressed(keys.left))  input.move.x -= 1.f;
+    if (sf::Keyboard::isKeyPressed(keys.right)) input.move.x += 1.f;
+
+    float len = std::sqrt(input.move.x * input.move.x + input.move.y * input.move.y);
+    if (len > 0.f)
+    {
+        input.move.x /= len;
+        input.move.y /= len;
+    }
+
+    input.shootHeld = sf::Keyboard::isKeyPressed(keys.shoot);
+
+    bool dashNow = sf::Keyboard::isKeyPressed(keys.dash);
+    input.dashPressed = dashNow && !dashPrev;
+    dashPrev = dashNow;
+
+    return input;
 }
 
 bool GameState::HandleEvent(const sf::Event& event)
@@ -234,8 +301,22 @@ void GameState::Draw(sf::RenderTarget& target)
 bool GameState::Update(sf::Time dt)
 {
     // Update players with wall collision
-    m_p1.update(dt, m_walls);
-    m_p2.update(dt, m_walls);
+    const auto& settings = *GetContext().settings;
+
+    PlayerInput p1Input{};
+    PlayerInput p2Input{};
+
+    if (settings.chosen_team == GameSettings::Team::Fire)
+    {
+        p1Input = build_input_from_keybinds(settings.local_keys, m_p1_dash_prev);
+    }
+    else if (settings.chosen_team == GameSettings::Team::Water)
+    {
+        p2Input = build_input_from_keybinds(settings.local_keys, m_p2_dash_prev);
+    }
+
+    m_p1.update(dt, p1Input, m_walls);
+    m_p2.update(dt, p2Input, m_walls);
 
     // Shooting - spawn bullets only when shoot animation reaches release frame
     if (m_p1.consume_shot_event())

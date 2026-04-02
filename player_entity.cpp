@@ -17,9 +17,6 @@ PlayerEntity::PlayerEntity()
 	m_body.setFillColor(sf::Color::Transparent);
 	m_body.setOutlineThickness(2.f);
 	m_body.setOutlineColor(sf::Color(255, 255, 255, 140));
-
-    // default controls (can be overridden)
-    set_controls_wasd();
 }
 
 static constexpr bool kDrawHurtboxDebug = true;
@@ -246,50 +243,11 @@ sf::Vector2f PlayerEntity::get_projectile_spawn_point(float projectile_radius) c
 sf::Vector2f PlayerEntity::position() const { return m_body.getPosition(); }
 void PlayerEntity::set_color(const sf::Color& c) { m_body.setOutlineColor(c); }
 
-void PlayerEntity::set_controls_arrows()
-{
-    m_up = sf::Keyboard::Scancode::Up;
-    m_down = sf::Keyboard::Scancode::Down;
-    m_left = sf::Keyboard::Scancode::Left;
-    m_right = sf::Keyboard::Scancode::Right;
 
-    m_shoot = sf::Keyboard::Scancode::Num1;
-	m_dash = sf::Keyboard::Scancode::Num2;
-}
-
-void PlayerEntity::set_controls_wasd()
-{
-    m_up = sf::Keyboard::Scancode::W;
-    m_down = sf::Keyboard::Scancode::S;
-    m_left = sf::Keyboard::Scancode::A;
-    m_right = sf::Keyboard::Scancode::D;
-
-    m_shoot = sf::Keyboard::Scancode::J;
-	m_dash = sf::Keyboard::Scancode::K;
-}
-
-void PlayerEntity::handle_input(sf::Vector2f& dir) const
-{
-    dir = { 0.f, 0.f };
-
-    if (sf::Keyboard::isKeyPressed(m_up)) dir.y -= 1.f;
-    if (sf::Keyboard::isKeyPressed(m_down)) dir.y += 1.f;
-    if (sf::Keyboard::isKeyPressed(m_left)) dir.x -= 1.f;
-    if (sf::Keyboard::isKeyPressed(m_right)) dir.x += 1.f;
-
-    // normalize diagonal
-    const float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-    if (len > 0.f)
-    {
-        dir.x /= len;
-        dir.y /= len;
-    }
-}
-
-void PlayerEntity::update(sf::Time dt, const std::vector<sf::RectangleShape>& walls)
+void PlayerEntity::update(sf::Time dt, const PlayerInput& input, const std::vector<sf::RectangleShape>& walls)
 {
     m_shoot_timer += dt;
-    try_start_shoot_cast();
+    try_start_shoot_cast(input.shootHeld);
 
     if(m_invulnerable)
     {
@@ -304,13 +262,10 @@ void PlayerEntity::update(sf::Time dt, const std::vector<sf::RectangleShape>& wa
 	m_dash_cd_timer += dt;
 
     // detect single press for dash
-	const bool dash_now = sf::Keyboard::isKeyPressed(m_dash);
-	const bool dash_pressed = dash_now && !m_dash_pressed_prev;
-	m_dash_pressed_prev = dash_now;
+	const bool dash_pressed = input.dashPressed;
 
     // read movement direction - for facing + normal movement
-    sf::Vector2f dir;
-    handle_input(dir);
+	sf::Vector2f dir = input.move;
 
     if (dir.x != 0.f || dir.y != 0.f)
         m_last_dir = dir;
@@ -464,13 +419,13 @@ sf::Vector2f PlayerEntity::facing_dir() const
 
 bool PlayerEntity::can_shoot() const
 {
-    return m_shoot_timer >= m_shoot_cd && sf::Keyboard::isKeyPressed(m_shoot);
+    return m_shoot_timer >= m_shoot_cd;
 }
 
-void PlayerEntity::try_start_shoot_cast()
+void PlayerEntity::try_start_shoot_cast(bool shootHeld)
 {
     // only start if - key is held, cd is ready, no already casting
-    if (!sf::Keyboard::isKeyPressed(m_shoot)) return;
+    if (!shootHeld) return;
     if (m_shoot_timer < m_shoot_cd) return;
     if (m_is_shoot_casting) return;
 

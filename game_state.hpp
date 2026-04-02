@@ -7,6 +7,7 @@
 
 #include "state.hpp"
 #include "player_entity.hpp"
+#include "player_input.hpp"
 #include "bullet.hpp"
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/Text.hpp>
@@ -28,20 +29,25 @@ private:
     sf::Vector2f pick_safe_spawn(const PlayerEntity& enemy) const;
     bool spawn_is_clear(sf::Vector2f p) const;
 
+    PlayerInput build_input_from_keybinds(const PlayerKeybinds& keys, bool& dashPrev);
+
 private:
     sf::RenderWindow& m_window;
 
     std::vector<sf::RectangleShape> m_walls;
 	std::vector<sf::Vector2f> m_spawn_points;
 
-    PlayerEntity m_p1; // WASD + J, K
-    PlayerEntity m_p2; // arrows + 1, 2
+    PlayerEntity m_p1; // Fire player
+    PlayerEntity m_p2; // Water player
+
+    bool m_p1_dash_prev = false;
+    bool m_p2_dash_prev = false;
 
     std::vector<Bullet> m_bullets;
 
     int m_fire_kills = 0;
     int m_water_kills = 0;
-    const int m_kills_to_win = 30;
+    const int m_kills_to_win = 3;
 
     sf::Text m_hud;
 };

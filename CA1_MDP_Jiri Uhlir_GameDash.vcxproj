@@ -114,7 +114,7 @@
 
 sfml-window-d.lib;
 
-sfml-system-d.lib;sfml-audio-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+sfml-system-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-system-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -133,7 +133,7 @@ sfml-system-d.lib;sfml-audio-d.lib;%(AdditionalDependencies)</AdditionalDependen
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)external\SFML-3.0.1\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>sfml-graphics.lib;sfml-window.lib;sfml-system.lib;sfml-audio.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>sfml-graphics.lib;sfml-window.lib;sfml-system.lib;sfml-audio.lib;sfml-network.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -151,7 +151,9 @@ sfml-system-d.lib;sfml-audio-d.lib;%(AdditionalDependencies)</AdditionalDependen
     <ClCompile Include="label.cpp" />
     <ClCompile Include="menu_state.cpp" />
     <ClCompile Include="music_player.cpp" />
+    <ClCompile Include="network_manager.cpp" />
     <ClCompile Include="player_entity.cpp" />
+    <ClCompile Include="player_input.cpp" />
     <ClCompile Include="settings_state.cpp" />
     <ClCompile Include="sound_id.cpp" />
     <ClCompile Include="sound_player.cpp" />
@@ -175,7 +177,9 @@ sfml-system-d.lib;sfml-audio-d.lib;%(AdditionalDependencies)</AdditionalDependen
     <ClInclude Include="label.hpp" />
     <ClInclude Include="menu_state.hpp" />
     <ClInclude Include="music_player.hpp" />
+    <ClInclude Include="network_manager.hpp" />
     <ClInclude Include="player_entity.hpp" />
+    <ClInclude Include="player_input.hpp" />
     <ClInclude Include="resource_holder.hpp" />
     <ClInclude Include="resource_identifiers.hpp" />
     <ClInclude Include="settings_state.hpp" />

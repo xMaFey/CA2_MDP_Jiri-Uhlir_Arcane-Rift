@@ -8,6 +8,7 @@
 #include <SFML/Graphics/Text.hpp>
 #include "utility.hpp"
 #include "button.hpp"
+#include "stateid.hpp"
 
 MenuState::MenuState(StateStack& stack, Context context) : State(stack, context), m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
 {
@@ -16,6 +17,11 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
     host_button->SetText("Host Game");
     host_button->SetCallback([this]()
         {
+            auto& settings = *GetContext().settings;
+            settings.network_role = GameSettings::NetworkRole::Host;
+            settings.server_ip = "127.0.0.1";
+            settings.server_port = 53000;
+
             GetContext().sounds->Play(SoundID::kButton);
             RequestStackPush(StateID::kTeamSelect);
         });
@@ -25,6 +31,10 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
     join_button->SetText("Join Game");
     join_button->SetCallback([this]()
         {
+            auto& settings = *GetContext().settings;
+            settings.network_role = GameSettings::NetworkRole::Client;
+            settings.server_port = 53000;
+
             GetContext().sounds->Play(SoundID::kButton);
             RequestStackPush(StateID::kTeamSelect);
         });

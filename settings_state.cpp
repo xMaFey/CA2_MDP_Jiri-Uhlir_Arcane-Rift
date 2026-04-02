@@ -36,10 +36,33 @@ SettingsState::SettingsState(StateStack& stack, Context context)
     toggle_controls->SetCallback([this]()
         {
             auto& s = *GetContext().settings;
-            if (s.controls == GameSettings::ControlScheme::WASD)
-                s.controls = GameSettings::ControlScheme::Arrows;
+
+            const bool is_wasd =
+                s.local_keys.up == sf::Keyboard::Scancode::W &&
+                s.local_keys.down == sf::Keyboard::Scancode::S &&
+                s.local_keys.left == sf::Keyboard::Scancode::A &&
+                s.local_keys.right == sf::Keyboard::Scancode::D &&
+                s.local_keys.shoot == sf::Keyboard::Scancode::J &&
+                s.local_keys.dash == sf::Keyboard::Scancode::K;
+
+            if (is_wasd)
+            {
+                s.local_keys.up = sf::Keyboard::Scancode::Up;
+                s.local_keys.down = sf::Keyboard::Scancode::Down;
+                s.local_keys.left = sf::Keyboard::Scancode::Left;
+                s.local_keys.right = sf::Keyboard::Scancode::Right;
+                s.local_keys.shoot = sf::Keyboard::Scancode::Num1;
+                s.local_keys.dash = sf::Keyboard::Scancode::Num2;
+            }
             else
-                s.controls = GameSettings::ControlScheme::WASD;
+            {
+                s.local_keys.up = sf::Keyboard::Scancode::W;
+                s.local_keys.down = sf::Keyboard::Scancode::S;
+                s.local_keys.left = sf::Keyboard::Scancode::A;
+                s.local_keys.right = sf::Keyboard::Scancode::D;
+                s.local_keys.shoot = sf::Keyboard::Scancode::J;
+                s.local_keys.dash = sf::Keyboard::Scancode::K;
+            }
 
             GetContext().sounds->Play(SoundID::kButton);
             refresh_text();
@@ -64,10 +87,20 @@ SettingsState::SettingsState(StateStack& stack, Context context)
 void SettingsState::refresh_text()
 {
     const auto& s = *GetContext().settings;
+
+    const bool is_wasd =
+        s.local_keys.up == sf::Keyboard::Scancode::W &&
+        s.local_keys.down == sf::Keyboard::Scancode::S &&
+        s.local_keys.left == sf::Keyboard::Scancode::A &&
+        s.local_keys.right == sf::Keyboard::Scancode::D &&
+        s.local_keys.shoot == sf::Keyboard::Scancode::J &&
+        s.local_keys.dash == sf::Keyboard::Scancode::K;
+
     m_controls_text.setString(
         std::string("Controls: ") +
-        (s.controls == GameSettings::ControlScheme::WASD ? "WASD + J/K" : "Arrows + 1/2")
+        (is_wasd ? "WASD + J/K" : "Arrows + 1/2")
     );
+
     Utility::CentreOrigin(m_controls_text);
 }
 

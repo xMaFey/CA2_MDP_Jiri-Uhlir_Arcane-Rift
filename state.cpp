@@ -14,8 +14,15 @@ State::~State()
 {
 }
 
-State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, SoundPlayer& sounds, MusicPlayer& music, GameSettings& settings)
-	: target(&window), window(&window), textures(&textures), fonts(&fonts), sounds(&sounds), music(&music), settings(&settings)
+State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, SoundPlayer& sounds, MusicPlayer& music, GameSettings& settings, NetworkManager& network)
+    : target(&window)
+    , window(&window)
+    , textures(&textures)
+    , fonts(&fonts)
+    , sounds(&sounds)
+    , music(&music)
+    , settings(&settings)
+    , network(&network)
 {
 }
 

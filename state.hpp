@@ -11,6 +11,7 @@
 #include "sound_player.hpp"
 #include "music_player.hpp"
 #include "game_settings.hpp"
+#include "network_manager.hpp"
 
 class StateStack;
 
@@ -22,7 +23,7 @@ public:
 
 	struct Context
 	{
-		Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, SoundPlayer& sounds, MusicPlayer& music, GameSettings& settings);
+		Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, SoundPlayer& sounds, MusicPlayer& music, GameSettings& settings, NetworkManager& network);
 		
 		//TODO unique_ptr rather than raw pointers here?
 		sf::RenderTarget* target;
@@ -34,6 +35,7 @@ public:
 		MusicPlayer* music;
 
 		GameSettings* settings;
+		NetworkManager* network;
 	};
 
 public:

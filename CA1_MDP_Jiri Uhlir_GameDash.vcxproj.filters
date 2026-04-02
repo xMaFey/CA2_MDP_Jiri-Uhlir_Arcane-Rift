@@ -93,6 +93,12 @@
     <ClCompile Include="team_select_state.cpp">
       <Filter>Core\States</Filter>
     </ClCompile>
+    <ClCompile Include="player_input.cpp">
+      <Filter>Core\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="network_manager.cpp">
+      <Filter>Core\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="title_state.hpp">
@@ -175,6 +181,12 @@
     </ClInclude>
     <ClInclude Include="team_select_state.hpp">
       <Filter>Core\States</Filter>
+    </ClInclude>
+    <ClInclude Include="player_input.hpp">
+      <Filter>Core\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="network_manager.hpp">
+      <Filter>Core\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

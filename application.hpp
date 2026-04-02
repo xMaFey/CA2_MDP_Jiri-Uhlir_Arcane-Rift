@@ -15,6 +15,7 @@
 #include "sound_player.hpp"
 #include "music_player.hpp"
 #include "game_settings.hpp"
+#include "network_manager.hpp"
 
 
 class Application
@@ -38,6 +39,7 @@ private:
 	SoundPlayer m_sounds;
 	MusicPlayer m_music;
 	GameSettings m_settings;
+	NetworkManager m_network;
 
 	StateStack m_stack;
 

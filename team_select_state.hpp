@@ -25,6 +25,7 @@ private:
 
 private:
     sf::Text m_title;
+    sf::Text m_mode_text;
     sf::Text m_name_text;
     sf::Text m_fire_text;
     sf::Text m_water_text;
@@ -34,7 +35,7 @@ private:
 
     std::string m_nickname = "Player";
 
-    int m_fire_count = 7;
+    int m_fire_count = 5;
     int m_water_count = 5;
     int m_team_limit = 10;
 };
