@@ -31,6 +31,9 @@
     <Filter Include="Core\States">
       <UniqueIdentifier>{eba5c917-acd9-4382-96e1-700658bcde99}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Core\Network Files">
+      <UniqueIdentifier>{5c6c5bde-693a-48e7-93fd-561122e2c278}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CA1_MDP_Jiri Uhlir_GameDash.cpp">
@@ -96,8 +99,14 @@
     <ClCompile Include="player_input.cpp">
       <Filter>Core\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="host_session.cpp">
+      <Filter>Core\Network Files</Filter>
+    </ClCompile>
+    <ClCompile Include="client_session.cpp">
+      <Filter>Core\Network Files</Filter>
+    </ClCompile>
     <ClCompile Include="network_manager.cpp">
-      <Filter>Core\Source Files</Filter>
+      <Filter>Core\Network Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -186,7 +195,16 @@
       <Filter>Core\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="network_manager.hpp">
-      <Filter>Core\Header Files</Filter>
+      <Filter>Core\Network Files</Filter>
+    </ClInclude>
+    <ClInclude Include="host_session.hpp">
+      <Filter>Core\Network Files</Filter>
+    </ClInclude>
+    <ClInclude Include="client_session.hpp">
+      <Filter>Core\Network Files</Filter>
+    </ClInclude>
+    <ClInclude Include="network_packets.hpp">
+      <Filter>Core\Network Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -199,5 +217,10 @@
     <None Include="README.md">
       <Filter>Core</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ip.txt">
+      <Filter>Core\Network Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

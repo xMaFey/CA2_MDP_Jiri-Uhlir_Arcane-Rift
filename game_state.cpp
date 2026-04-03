@@ -11,6 +11,7 @@
 #include <random>
 #include <iostream>
 #include <SFML/Network/IpAddress.hpp>
+#include "game_settings.hpp"
 
 GameState::GameState(StateStack& stack, Context context)
     : State(stack, context)
@@ -27,17 +28,21 @@ GameState::GameState(StateStack& stack, Context context)
 
         if (settings.network_role == GameSettings::NetworkRole::Host)
         {
-            const bool ok = network.start_host(settings.server_port);
+            m_host_session = std::make_unique<HostSession>(network);
+
+            const bool ok = m_host_session->start(settings.server_port);
             std::cout << (ok ? "Host started\n" : "Host failed\n");
         }
         else if (settings.network_role == GameSettings::NetworkRole::Client)
         {
+            m_client_session = std::make_unique<ClientSession>(network);
+
             const auto ip = sf::IpAddress::resolve(settings.server_ip);
 
             bool ok = false;
             if (ip.has_value())
             {
-                ok = network.start_client(*ip, settings.server_port);
+                ok = m_client_session->connect(*ip, settings.server_port);
             }
 
             std::cout << (ok ? "Client connected\n" : "Client failed to connect\n");
@@ -306,6 +311,7 @@ bool GameState::Update(sf::Time dt)
     PlayerInput p1Input{};
     PlayerInput p2Input{};
 
+    // build local input based on selected team
     if (settings.chosen_team == GameSettings::Team::Fire)
     {
         p1Input = build_input_from_keybinds(settings.local_keys, m_p1_dash_prev);
@@ -315,69 +321,174 @@ bool GameState::Update(sf::Time dt)
         p2Input = build_input_from_keybinds(settings.local_keys, m_p2_dash_prev);
     }
 
-    m_p1.update(dt, p1Input, m_walls);
-    m_p2.update(dt, p2Input, m_walls);
-
-    // Shooting - spawn bullets only when shoot animation reaches release frame
-    if (m_p1.consume_shot_event())
+    // networking step 1:
+    // host receives remote input
+    // client sends local input
+    if (settings.network_role == GameSettings::NetworkRole::Host)
     {
-        GetContext().sounds->Play(SoundID::kFireSpell);
-        m_bullets.emplace_back(m_p1.get_projectile_spawn_point(6.f), m_p1.facing_dir(), 1, Bullet::SpellType::Fire);
-    }
-    if (m_p2.consume_shot_event())
-    {
-        GetContext().sounds->Play(SoundID::kWaterSpell);
-        m_bullets.emplace_back(m_p2.get_projectile_spawn_point(6.f), m_p2.facing_dir(), 2, Bullet::SpellType::Water);
-    }
-
-    // Update bullets
-    for (auto& b : m_bullets) b.update(dt);
-
-    // Bullet vs walls -> kill bullet
-    for (auto& b : m_bullets)
-    {
-        if (b.is_dead()) continue;
-        const auto bb = b.shape().getGlobalBounds();
-
-        for (const auto& w : m_walls)
+        if (m_host_session)
         {
-            if (bb.findIntersection(w.getGlobalBounds()).has_value())
+            const auto remote = m_host_session->poll_remote_input();
+            if (remote.has_value())
             {
-                b.kill();
-                break;
+                m_remote_input = *remote;
+            }
+        }
+
+        // apply latest remote input to the opposite player
+        if (settings.chosen_team == GameSettings::Team::Fire)
+        {
+            if (m_remote_input.has_value())
+                p2Input = *m_remote_input;
+        }
+        else if (settings.chosen_team == GameSettings::Team::Water)
+        {
+            if (m_remote_input.has_value())
+                p1Input = *m_remote_input;
+        }
+    }
+    else if (settings.network_role == GameSettings::NetworkRole::Client)
+    {
+        if (m_client_session)
+        {
+            if (settings.chosen_team == GameSettings::Team::Fire)
+            {
+                m_client_session->send_local_input(p1Input);
+            }
+            else if (settings.chosen_team == GameSettings::Team::Water)
+            {
+                m_client_session->send_local_input(p2Input);
             }
         }
     }
 
-    // Bullet vs players - if invulnerable = ignore
-    for (auto& b : m_bullets)
+    m_p1.update(dt, p1Input, m_walls);
+    m_p2.update(dt, p2Input, m_walls);
+
+    if (settings.network_role != GameSettings::NetworkRole::Client)
     {
-        if (b.is_dead()) continue;
-
-        const sf::Vector2f bp = b.shape().getPosition();
-        const float br = b.shape().getRadius();
-
-        if (b.owner() == 1 && !m_p2.is_invulnerable() && m_p2.bullet_hits_hurtbox(bp, br))
+        // Shooting - spawn bullets only when shoot animation reaches release frame
+        if (m_p1.consume_shot_event())
         {
-            b.kill();
-            GetContext().sounds->Play(SoundID::kFireHit);
-            ++m_fire_kills;
-            m_p2.respawn(pick_safe_spawn(m_p1));
+            GetContext().sounds->Play(SoundID::kFireSpell);
+            m_bullets.emplace_back(m_p1.get_projectile_spawn_point(6.f), m_p1.facing_dir(), 1, Bullet::SpellType::Fire);
         }
-        else if (b.owner() == 2 && !m_p1.is_invulnerable() && m_p1.bullet_hits_hurtbox(bp, br))
+        if (m_p2.consume_shot_event())
         {
-            b.kill();
-            GetContext().sounds->Play(SoundID::kWaterHit);
-            ++m_water_kills;
-            m_p1.respawn(pick_safe_spawn(m_p2));
+            GetContext().sounds->Play(SoundID::kWaterSpell);
+            m_bullets.emplace_back(m_p2.get_projectile_spawn_point(6.f), m_p2.facing_dir(), 2, Bullet::SpellType::Water);
+        }
+
+        // Update bullets
+        for (auto& b : m_bullets) b.update(dt);
+
+        // Bullet vs walls -> kill bullet
+        for (auto& b : m_bullets)
+        {
+            if (b.is_dead()) continue;
+            const auto bb = b.shape().getGlobalBounds();
+
+            for (const auto& w : m_walls)
+            {
+                if (bb.findIntersection(w.getGlobalBounds()).has_value())
+                {
+                    b.kill();
+                    break;
+                }
+            }
+        }
+
+        // Bullet vs players - if invulnerable = ignore
+        for (auto& b : m_bullets)
+        {
+            if (b.is_dead()) continue;
+
+            const sf::Vector2f bp = b.shape().getPosition();
+            const float br = b.shape().getRadius();
+
+            if (b.owner() == 1 && !m_p2.is_invulnerable() && m_p2.bullet_hits_hurtbox(bp, br))
+            {
+                b.kill();
+                GetContext().sounds->Play(SoundID::kFireHit);
+                ++m_fire_kills;
+                m_p2.respawn(pick_safe_spawn(m_p1));
+            }
+            else if (b.owner() == 2 && !m_p1.is_invulnerable() && m_p1.bullet_hits_hurtbox(bp, br))
+            {
+                b.kill();
+                GetContext().sounds->Play(SoundID::kWaterHit);
+                ++m_water_kills;
+                m_p1.respawn(pick_safe_spawn(m_p2));
+            }
+        }
+
+        // Remove dead bullets
+        m_bullets.erase(
+            std::remove_if(m_bullets.begin(), m_bullets.end(), [](const Bullet& b) { return b.is_dead(); }),
+            m_bullets.end()
+        );
+    }
+
+    // host sends current world state to client
+    if (settings.network_role == GameSettings::NetworkRole::Host)
+    {
+        if (m_host_session)
+        {
+            WorldStatePacket state;
+            state.p1_pos = m_p1.position();
+            state.p2_pos = m_p2.position();
+            state.fire_kills = m_fire_kills;
+            state.water_kills = m_water_kills;
+
+            // add bullets
+            for (const auto& b : m_bullets)
+            {
+                if (b.is_dead()) continue;
+
+                BulletState bs;
+                bs.pos = b.shape().getPosition();
+                bs.dir = b.direction();
+                bs.owner = b.owner();
+
+                // spell type
+                bs.spell = (b.owner() == 1) ? 0 : 1;
+
+                state.bullets.push_back(bs);
+            }
+
+            m_host_session->send_world_state(state);
         }
     }
-    
-    // Remove dead bullets
-    m_bullets.erase(
-        std::remove_if(m_bullets.begin(), m_bullets.end(), [](const Bullet& b) { return b.is_dead(); }),
-        m_bullets.end()
-    );
+
+    // client receives world state from host and applies it
+    if (settings.network_role == GameSettings::NetworkRole::Client)
+    {
+        if (m_client_session)
+        {
+            const auto state = m_client_session->poll_world_state();
+            if (state.has_value())
+            {
+                m_latest_world_state = *state;
+
+                m_p1.set_position(state->p1_pos);
+                m_p2.set_position(state->p2_pos);
+
+                m_fire_kills = state->fire_kills;
+                m_water_kills = state->water_kills;
+
+                // rebuild bullets from host
+                m_bullets.clear();
+
+                for (const auto& b : state->bullets)
+                {
+                    Bullet::SpellType spell =
+                        (b.spell == 0) ? Bullet::SpellType::Fire : Bullet::SpellType::Water;
+
+                    m_bullets.emplace_back(b.pos, b.dir, b.owner, spell);
+                }
+            }
+        }
+    }
     
     // HUD
     std::ostringstream ss;

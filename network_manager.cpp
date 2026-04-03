@@ -16,6 +16,62 @@ namespace
     {
         return packet >> input.move.x >> input.move.y >> input.shootHeld >> input.dashPressed;
     }
+
+    sf::Packet& operator<<(sf::Packet& packet, const BulletState& b)
+    {
+        return packet
+            << b.pos.x << b.pos.y
+            << b.dir.x << b.dir.y
+            << b.owner
+            << b.spell;
+    }
+
+    sf::Packet& operator>>(sf::Packet& packet, BulletState& b)
+    {
+        return packet
+            >> b.pos.x >> b.pos.y
+            >> b.dir.x >> b.dir.y
+            >> b.owner
+            >> b.spell;
+    }
+
+    sf::Packet& operator<<(sf::Packet& packet, const WorldStatePacket& state)
+    {
+        packet
+            << state.p1_pos.x << state.p1_pos.y
+            << state.p2_pos.x << state.p2_pos.y
+            << state.fire_kills << state.water_kills;
+
+        packet << static_cast<uint32_t>(state.bullets.size());
+
+        for (const auto& b : state.bullets)
+            packet << b;
+
+        return packet;
+    }
+
+    sf::Packet& operator>>(sf::Packet& packet, WorldStatePacket& state)
+    {
+        packet
+            >> state.p1_pos.x >> state.p1_pos.y
+            >> state.p2_pos.x >> state.p2_pos.y
+            >> state.fire_kills >> state.water_kills;
+
+        uint32_t count = 0;
+        packet >> count;
+
+        state.bullets.clear();
+        state.bullets.reserve(count);
+
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            BulletState b;
+            packet >> b;
+            state.bullets.push_back(b);
+        }
+
+        return packet;
+    }
 }
 
 bool NetworkManager::start_host(unsigned short port)
@@ -98,6 +154,35 @@ std::optional<PlayerInput> NetworkManager::receive_input()
         PlayerInput input;
         packet >> input;
         return input;
+    }
+
+    return std::nullopt;
+}
+
+bool NetworkManager::send_world_state(const WorldStatePacket& state)
+{
+    if (!m_connected)
+        return false;
+
+    sf::Packet packet;
+    packet << state;
+
+    return m_socket.send(packet) == sf::Socket::Status::Done;
+}
+
+std::optional<WorldStatePacket> NetworkManager::receive_world_state()
+{
+    if (!m_connected)
+        return std::nullopt;
+
+    sf::Packet packet;
+    const auto status = m_socket.receive(packet);
+
+    if (status == sf::Socket::Status::Done)
+    {
+        WorldStatePacket state;
+        packet >> state;
+        return state;
     }
 
     return std::nullopt;

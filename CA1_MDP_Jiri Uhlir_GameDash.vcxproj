@@ -144,10 +144,12 @@ sfml-system-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-system-d.lib;%(Additi
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)external\SFML-3.0.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)external\SFML-3.0.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="client_session.cpp" />
     <ClCompile Include="component.cpp" />
     <ClCompile Include="container.cpp" />
     <ClCompile Include="game_over_state.cpp" />
     <ClCompile Include="game_state.cpp" />
+    <ClCompile Include="host_session.cpp" />
     <ClCompile Include="label.cpp" />
     <ClCompile Include="menu_state.cpp" />
     <ClCompile Include="music_player.cpp" />
@@ -167,6 +169,7 @@ sfml-system-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-system-d.lib;%(Additi
     <ClInclude Include="application.hpp" />
     <ClInclude Include="bullet.hpp" />
     <ClInclude Include="button.hpp" />
+    <ClInclude Include="client_session.hpp" />
     <ClInclude Include="component.hpp" />
     <ClInclude Include="constants.hpp" />
     <ClInclude Include="container.hpp" />
@@ -174,10 +177,12 @@ sfml-system-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-system-d.lib;%(Additi
     <ClInclude Include="game_over_state.hpp" />
     <ClInclude Include="game_settings.hpp" />
     <ClInclude Include="game_state.hpp" />
+    <ClInclude Include="host_session.hpp" />
     <ClInclude Include="label.hpp" />
     <ClInclude Include="menu_state.hpp" />
     <ClInclude Include="music_player.hpp" />
     <ClInclude Include="network_manager.hpp" />
+    <ClInclude Include="network_packets.hpp" />
     <ClInclude Include="player_entity.hpp" />
     <ClInclude Include="player_input.hpp" />
     <ClInclude Include="resource_holder.hpp" />
@@ -198,6 +203,9 @@ sfml-system-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-system-d.lib;%(Additi
     <None Include="CppProperties.json" />
     <None Include="README.md" />
     <None Include="resource_holder.inl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ip.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

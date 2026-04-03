@@ -12,6 +12,11 @@
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/Text.hpp>
 #include <vector>
+#include "host_session.hpp"
+#include "client_session.hpp"
+#include <memory>
+#include <optional>
+#include "network_packets.hpp"
 
 class GameState : public State
 {
@@ -48,6 +53,12 @@ private:
     int m_fire_kills = 0;
     int m_water_kills = 0;
     const int m_kills_to_win = 3;
+
+    std::unique_ptr<HostSession> m_host_session;
+    std::unique_ptr<ClientSession> m_client_session;
+
+    std::optional<PlayerInput> m_remote_input;
+    std::optional<WorldStatePacket> m_latest_world_state;
 
     sf::Text m_hud;
 };

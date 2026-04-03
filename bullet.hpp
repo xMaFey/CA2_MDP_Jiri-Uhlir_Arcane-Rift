@@ -33,6 +33,8 @@ public:
 
     const sf::CircleShape& shape() const;
 
+    sf::Vector2f direction() const { return m_dir; }
+
 private:
     sf::CircleShape m_shape;
     sf::Vector2f m_velocity;

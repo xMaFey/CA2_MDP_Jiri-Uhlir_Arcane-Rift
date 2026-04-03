@@ -12,6 +12,8 @@
 #include "settings_state.hpp"
 #include "game_over_state.hpp"
 #include "team_select_state.hpp"
+#include <fstream>
+#include <iostream>
 
 Application::Application() : m_window(sf::VideoMode({ 1280, 720 }), "States", sf::Style::Close)
 , m_textures()
@@ -23,6 +25,31 @@ Application::Application() : m_window(sf::VideoMode({ 1280, 720 }), "States", sf
 , m_scene_sprite(m_scene_texture.getTexture())
 {
 	m_window.setKeyRepeatEnabled(false);
+
+	// load server IP from file
+		std::ifstream file("ip.txt");
+		if (file.is_open())
+		{
+			std::getline(file, m_settings.server_ip);
+
+			if (!m_settings.server_ip.empty())
+			{
+				std::cout << "Loaded server IP: " << m_settings.server_ip << "\n";
+			}
+			else
+			{
+				m_settings.server_ip = "127.0.0.1";
+				std::cout << "ip.txt was empty, using default IP\n";
+			}
+		}
+		else
+		{
+			m_settings.server_ip = "127.0.0.1";
+			std::cout << "Could not open ip.txt, using default IP\n";
+		}
+
+		std::cout << "Connecting to: " << m_settings.server_ip << ":" << m_settings.server_port << "\n";
+
 	m_fonts.Load(FontID::kMain, "Media/Fonts/Sansation.ttf");
 	m_textures.Load(TextureID::kEagle, "Media/Textures/Eagle.png");
 	m_textures.Load(TextureID::kTitleScreen, "Media/Textures/TitleScreen.png");

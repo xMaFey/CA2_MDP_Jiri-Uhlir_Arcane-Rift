@@ -8,6 +8,7 @@
 #include <SFML/Network.hpp>
 #include <optional>
 #include "player_input.hpp"
+#include "network_packets.hpp"
 
 class NetworkManager
 {
@@ -29,6 +30,9 @@ public:
 
     bool send_input(const PlayerInput& input);
     std::optional<PlayerInput> receive_input();
+
+    bool send_world_state(const WorldStatePacket& state);
+    std::optional<WorldStatePacket> receive_world_state();
 
 private:
     Mode m_mode = Mode::None;
