@@ -43,7 +43,7 @@ private:
 
     SpellType m_spell = SpellType::Fire;
 
-    std::vector<sf::Texture> m_frames;
+    const std::vector<sf::Texture>* m_frames = nullptr;
     std::optional<sf::Sprite> m_sprite;
 
     std::size_t m_frame_index = 0;
@@ -55,6 +55,12 @@ private:
     float m_sprite_scale = 0.10f;
     float m_visual_forward_offset = -180.f;
 
-    void load_frames_from_folder(const std::string& folder);
+    static std::vector<sf::Texture> s_fire_frames;
+    static std::vector<sf::Texture> s_water_frames;
+    static bool s_frames_loaded;
+
+    static void ensure_shared_frames_loaded();
+    static void load_frames_from_folder(const std::string& folder, std::vector<sf::Texture>& out_frames);
+
     void apply_visual_rotation();
 };

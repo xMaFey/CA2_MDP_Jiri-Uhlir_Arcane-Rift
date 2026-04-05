@@ -12,12 +12,19 @@
 #include <algorithm>
 #include <cmath>
 
+
+std::vector<sf::Texture> Bullet::s_fire_frames;
+std::vector<sf::Texture> Bullet::s_water_frames;
+bool Bullet::s_frames_loaded = false;
+
 Bullet::Bullet(sf::Vector2f pos, sf::Vector2f dir, int owner_id, SpellType spell)
     : m_owner_id(owner_id), m_spell(spell)
 {
-    // normalize dir
+    ensure_shared_frames_loaded();
+
     const float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-    if (len > 0.f) m_dir = { dir.x / len, dir.y / len };
+    if (len > 0.f)
+        m_dir = { dir.x / len, dir.y / len };
     else
         m_dir = { 1.f, 0.f };
 
@@ -25,15 +32,20 @@ Bullet::Bullet(sf::Vector2f pos, sf::Vector2f dir, int owner_id, SpellType spell
     m_shape.setOrigin({ 8.f, 8.f });
     m_shape.setPosition(pos);
 
-    // choose folder based on spell
-    const std::string folder = (m_spell == SpellType::Fire)
-        ? "Media/Assets/Spells/basic_cast_fire"
-        : "Media/Assets/Spells/basic_cast_water";
+    if (m_spell == SpellType::Fire)
+        m_frames = &s_fire_frames;
+    else
+        m_frames = &s_water_frames;
 
-    load_frames_from_folder(folder);
+    if (m_frames && !m_frames->empty())
+    {
+        m_sprite.emplace((*m_frames)[0]);
+        m_sprite->setTexture((*m_frames)[0], true);
 
-    if(m_sprite)
+        const auto sz = m_sprite->getTexture().getSize();
+        m_sprite->setOrigin({ sz.x * 0.5f, sz.y * 0.5f });
         m_sprite->setScale({ m_sprite_scale, m_sprite_scale });
+    }
 
     apply_visual_rotation();
 
@@ -45,7 +57,7 @@ Bullet::Bullet(sf::Vector2f pos, sf::Vector2f dir, int owner_id, SpellType spell
     m_velocity = m_dir * speed;
 }
 
-void Bullet::load_frames_from_folder(const std::string& folder)
+void Bullet::load_frames_from_folder(const std::string& folder, std::vector<sf::Texture>& out_frames)
 {
     namespace fs = std::filesystem;
 
@@ -53,31 +65,25 @@ void Bullet::load_frames_from_folder(const std::string& folder)
     for (const auto& entry : fs::directory_iterator(folder))
     {
         if (!entry.is_regular_file()) continue;
+
         auto ext = entry.path().extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+        std::transform(ext.begin(), ext.end(), ext.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
         if (ext == ".png")
             files.push_back(entry.path());
     }
 
     std::sort(files.begin(), files.end());
 
-    m_frames.clear();
-    m_frames.reserve(files.size());
+    out_frames.clear();
+    out_frames.reserve(files.size());
 
     for (const auto& p : files)
     {
         sf::Texture t;
         if (t.loadFromFile(p.string()))
-            m_frames.push_back(std::move(t));
-    }
-
-    if (!m_frames.empty())
-    {
-        m_sprite.emplace(m_frames[0]);
-        m_sprite->setTexture(m_frames[0], true);
-
-        const auto sz = m_sprite->getTexture().getSize();
-        m_sprite->setOrigin({ sz.x * 0.5f, sz.y * 0.5f });
+            out_frames.push_back(std::move(t));
     }
 }
 
@@ -91,21 +97,33 @@ void Bullet::apply_visual_rotation()
     m_sprite->setRotation(sf::degrees(deg));
 }
 
+void Bullet::ensure_shared_frames_loaded()
+{
+    if (s_frames_loaded)
+        return;
+
+    load_frames_from_folder("Media/Assets/Spells/basic_cast_fire", s_fire_frames);
+    load_frames_from_folder("Media/Assets/Spells/basic_cast_water", s_water_frames);
+
+    s_frames_loaded = true;
+}
+
 void Bullet::update(sf::Time dt)
 {
     // move collision
     m_shape.move(m_velocity * dt.asSeconds());
 
     // animate sprite
-    if (!m_frames.empty())
+    if (m_frames && !m_frames->empty())
     {
         m_frame_timer += dt;
         if (m_frame_timer >= m_frame_time)
         {
             m_frame_timer = sf::Time::Zero;
-            m_frame_index = (m_frame_index + 1) % m_frames.size();
+            m_frame_index = (m_frame_index + 1) % m_frames->size();
+
             if (m_sprite)
-                m_sprite->setTexture(m_frames[m_frame_index], true);
+                m_sprite->setTexture((*m_frames)[m_frame_index], true);
         }
     }
 

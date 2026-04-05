@@ -31,7 +31,14 @@ GameState::GameState(StateStack& stack, Context context)
             m_host_session = std::make_unique<HostSession>(network);
 
             const bool ok = m_host_session->start(settings.server_port);
-            std::cout << (ok ? "Host started\n" : "Host failed\n");
+            if (ok)
+            {
+                std::cout << "Host started on port " << settings.server_port << "\n";
+            }
+            else
+            {
+                std::cout << "Host failed\n";
+            }
         }
         else if (settings.network_role == GameSettings::NetworkRole::Client)
         {
@@ -465,21 +472,26 @@ bool GameState::Update(sf::Time dt)
     {
         if (m_client_session)
         {
-            const auto state = m_client_session->poll_world_state();
-            if (state.has_value())
+            while (true)
             {
+                const auto state = m_client_session->poll_world_state();
+                if (!state.has_value())
+                    break;
+
                 m_latest_world_state = *state;
+            }
 
-                m_p1.set_position(state->p1_pos);
-                m_p2.set_position(state->p2_pos);
+            if (m_latest_world_state.has_value())
+            {
+                m_p1.set_position(m_latest_world_state->p1_pos);
+                m_p2.set_position(m_latest_world_state->p2_pos);
 
-                m_fire_kills = state->fire_kills;
-                m_water_kills = state->water_kills;
+                m_fire_kills = m_latest_world_state->fire_kills;
+                m_water_kills = m_latest_world_state->water_kills;
 
-                // rebuild bullets from host
                 m_bullets.clear();
 
-                for (const auto& b : state->bullets)
+                for (const auto& b : m_latest_world_state->bullets)
                 {
                     Bullet::SpellType spell =
                         (b.spell == 0) ? Bullet::SpellType::Fire : Bullet::SpellType::Water;

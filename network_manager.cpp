@@ -93,13 +93,17 @@ bool NetworkManager::start_client(const sf::IpAddress& ip, unsigned short port)
     disconnect();
 
     m_mode = Mode::Client;
-    m_socket.setBlocking(false);
+
+    m_socket.setBlocking(true); // IMPORTANT: blocking during connect
 
     if (m_socket.connect(ip, port, sf::seconds(2.f)) != sf::Socket::Status::Done)
+    {
+        m_connected = false;
         return false;
-
+    }
+    
     m_connected = true;
-    m_socket.setBlocking(false);
+    m_socket.setBlocking(false); // switch to non-blocking after successful connect
     return true;
 }
 
