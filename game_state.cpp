@@ -335,9 +335,13 @@ bool GameState::Update(sf::Time dt)
     {
         if (m_host_session)
         {
-            const auto remote = m_host_session->poll_remote_input();
-            if (remote.has_value())
+            while (true)
             {
+                const auto remote = m_host_session->poll_remote_input();
+                if (!remote.has_value())
+                    break;
+
+                // keep only newest remote input
                 m_remote_input = *remote;
             }
         }
@@ -444,6 +448,8 @@ bool GameState::Update(sf::Time dt)
             WorldStatePacket state;
             state.p1_pos = m_p1.position();
             state.p2_pos = m_p2.position();
+            state.p1_dir = m_p1.facing_dir();
+            state.p2_dir = m_p2.facing_dir();
             state.fire_kills = m_fire_kills;
             state.water_kills = m_water_kills;
 
@@ -485,6 +491,9 @@ bool GameState::Update(sf::Time dt)
             {
                 m_p1.set_position(m_latest_world_state->p1_pos);
                 m_p2.set_position(m_latest_world_state->p2_pos);
+
+                m_p1.set_facing_dir(m_latest_world_state->p1_dir);
+                m_p2.set_facing_dir(m_latest_world_state->p2_dir);
 
                 m_fire_kills = m_latest_world_state->fire_kills;
                 m_water_kills = m_latest_world_state->water_kills;

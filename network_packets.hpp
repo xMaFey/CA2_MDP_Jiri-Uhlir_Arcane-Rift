@@ -33,6 +33,9 @@ struct WorldStatePacket
     sf::Vector2f p1_pos{ 0.f, 0.f };
     sf::Vector2f p2_pos{ 0.f, 0.f };
 
+    sf::Vector2f p1_dir{ 1.f, 0.f };
+    sf::Vector2f p2_dir{ 1.f, 0.f };
+
     int fire_kills = 0;
     int water_kills = 0;
 

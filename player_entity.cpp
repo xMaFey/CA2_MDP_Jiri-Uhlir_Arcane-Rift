@@ -221,6 +221,12 @@ void PlayerEntity::advance_anim(sf::Time dt)
 
 void PlayerEntity::set_position(sf::Vector2f p) { m_body.setPosition(p); }
 
+void PlayerEntity::set_facing_dir(sf::Vector2f dir)
+{
+    if (dir.x != 0.f || dir.y != 0.f)
+        m_last_dir = dir;
+}
+
 
 sf::Vector2f PlayerEntity::get_projectile_spawn_point(float projectile_radius) const
 {

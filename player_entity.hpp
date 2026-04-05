@@ -30,6 +30,8 @@ public:
 
     void set_color(const sf::Color& c);
 
+    void set_facing_dir(sf::Vector2f dir);
+
 
     void update(sf::Time dt, const PlayerInput& input, const std::vector<sf::RectangleShape>& walls);
     void draw(sf::RenderTarget& target) const;
