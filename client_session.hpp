@@ -18,7 +18,13 @@ public:
     bool connect(const sf::IpAddress& ip, unsigned short port);
     bool is_connected() const;
 
+    // send chosen nickname and team once after connect
+    bool send_join_info(const JoinInfoPacket& joinInfo);
+
+    // send gameplay input to host
     bool send_local_input(const PlayerInput& input);
+
+    // receive host world state
     std::optional<WorldStatePacket> poll_world_state();
 
 private:

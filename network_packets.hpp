@@ -8,11 +8,13 @@
 #include "player_input.hpp"
 #include <SFML/System/Vector2.hpp>
 #include <vector>
+#include <string>
 
 enum class PacketType
 {
-    PlayerInput = 1,
-    WorldState = 2
+    JoinInfo = 1,
+    PlayerInput = 2,
+    WorldState = 3
 };
 
 enum class NetTeam
@@ -20,6 +22,13 @@ enum class NetTeam
     Fire = 0,
     Water = 1,
     Spectator = 2
+};
+
+// sent once by client after connecting
+struct JoinInfoPacket
+{
+    std::string nickname = "Player";
+    int team = static_cast<int>(NetTeam::Spectator);
 };
 
 struct BulletState

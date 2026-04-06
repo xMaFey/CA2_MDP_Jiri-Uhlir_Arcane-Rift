@@ -26,6 +26,14 @@ bool HostSession::is_connected() const
     return m_network->is_connected();
 }
 
+std::optional<JoinInfoPacket> HostSession::poll_join_info()
+{
+    if (!m_network)
+        return std::nullopt;
+
+    return m_network->receive_join_info();
+}
+
 std::optional<PlayerInput> HostSession::poll_remote_input()
 {
     if (!m_network)

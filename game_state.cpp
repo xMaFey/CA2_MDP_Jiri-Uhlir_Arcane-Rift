@@ -16,13 +16,13 @@
 
 namespace
 {
-    // checking if player is an active player in the game
+    // checking if the player is actually in one of the two fighting teams
     bool is_combat_team(GameSettings::Team t)
     {
         return t == GameSettings::Team::Fire || t == GameSettings::Team::Water;
     }
 
-    // applying correct wizard color and animation for team
+    // applying team visuals to the player slot
     void apply_team_visuals(PlayerEntity& player, GameSettings::Team team)
     {
         if (team == GameSettings::Team::Fire)
@@ -37,7 +37,7 @@ namespace
         }
     }
 
-    // converting network team id back to local team enum
+    // converting network team id into local enum
     GameSettings::Team decode_team(int t)
     {
         if (t == static_cast<int>(NetTeam::Fire)) return GameSettings::Team::Fire;
@@ -45,7 +45,7 @@ namespace
         return GameSettings::Team::Spectator;
     }
 
-    // converting local team enum to network team id
+    // converting local enum into network team id
     int encode_team(GameSettings::Team t)
     {
         if (t == GameSettings::Team::Fire) return static_cast<int>(NetTeam::Fire);
@@ -53,11 +53,39 @@ namespace
         return static_cast<int>(NetTeam::Spectator);
     }
 
-    // squared distance helper for spawn checks
+    // converting team enum to text for HUD
+    std::string team_to_string(GameSettings::Team t)
+    {
+        if (t == GameSettings::Team::Fire) return "Fire";
+        if (t == GameSettings::Team::Water) return "Water";
+        return "Spectator";
+    }
+
+    // squared distance helper for respawn logic
     float dist2(sf::Vector2f a, sf::Vector2f b)
     {
         sf::Vector2f d = a - b;
         return d.x * d.x + d.y * d.y;
+    }
+
+    // default spawn positions for first few player ids
+    sf::Vector2f spawn_for_player_id(int id)
+    {
+        static const std::vector<sf::Vector2f> spawns =
+        {
+            {260.f, 360.f},
+            {1020.f, 360.f},
+            {150.f, 140.f},
+            {1130.f, 140.f},
+            {150.f, 620.f},
+            {1130.f, 620.f},
+            {640.f, 360.f}
+        };
+
+        if (id >= 0 && id < static_cast<int>(spawns.size()))
+            return spawns[id];
+
+        return spawns.back();
     }
 }
 
@@ -70,7 +98,7 @@ GameState::GameState(StateStack& stack, Context context)
 
     GetContext().music->Stop();
 
-    // starting host or client session
+    // starting networking
     if (GetContext().network)
     {
         auto& network = *GetContext().network;
@@ -96,6 +124,16 @@ GameState::GameState(StateStack& stack, Context context)
                 ok = m_client_session->connect(*ip, settings.server_port);
 
             std::cout << (ok ? "Client connected\n" : "Client failed to connect\n");
+
+            // sending chosen nickname and team to host once after connect
+            if (ok && m_client_session)
+            {
+                JoinInfoPacket joinInfo;
+                joinInfo.nickname = settings.nickname;
+                joinInfo.team = encode_team(settings.chosen_team);
+
+                m_client_session->send_join_info(joinInfo);
+            }
         }
         else
         {
@@ -105,39 +143,57 @@ GameState::GameState(StateStack& stack, Context context)
 
     build_map();
 
-    // default spawn positions for the two network sides
-    m_p1.set_position({ 260.f, 360.f });
-    m_p2.set_position({ 1020.f, 360.f });
+    // building player slot list
+    m_players.clear();
 
-    // assigning local chosen team to correct network side
+    PlayerSlot hostSlot;
+    hostSlot.id = 0;
+    hostSlot.nickname = (settings.network_role == GameSettings::NetworkRole::Client) ? "Host" : settings.nickname;
+    hostSlot.team = GameSettings::Team::Spectator;
+    hostSlot.connected = true;
+    hostSlot.entity.set_position(spawn_for_player_id(0));
+
+    PlayerSlot clientSlot;
+    clientSlot.id = 1;
+    clientSlot.nickname = "Player";
+    clientSlot.team = GameSettings::Team::Spectator;
+    clientSlot.connected = (settings.network_role == GameSettings::NetworkRole::None);
+    clientSlot.entity.set_position(spawn_for_player_id(1));
+
     if (settings.network_role == GameSettings::NetworkRole::Host)
     {
-        m_p1_team = settings.chosen_team;
-        m_p2_team = GameSettings::Team::Spectator; // remote side unknown for now
+        m_local_player_id = 0;
+        hostSlot.team = settings.chosen_team;
     }
     else if (settings.network_role == GameSettings::NetworkRole::Client)
     {
-        m_p1_team = GameSettings::Team::Spectator; // host side will come from server
-        m_p2_team = settings.chosen_team;
+        m_local_player_id = 1;
+        clientSlot.nickname = settings.nickname;
+        clientSlot.team = settings.chosen_team;
+        clientSlot.connected = true;
     }
     else
     {
         // offline fallback
-        m_p1_team = GameSettings::Team::Fire;
-        m_p2_team = GameSettings::Team::Water;
+        m_local_player_id = 0;
+        hostSlot.team = GameSettings::Team::Fire;
+        clientSlot.team = GameSettings::Team::Water;
     }
 
-    // loading correct visuals only for active fighters
-    if (is_combat_team(m_p1_team))
-        apply_team_visuals(m_p1, m_p1_team);
+    if (is_combat_team(hostSlot.team))
+        apply_team_visuals(hostSlot.entity, hostSlot.team);
 
-    if (is_combat_team(m_p2_team))
-        apply_team_visuals(m_p2, m_p2_team);
+    if (is_combat_team(clientSlot.team))
+        apply_team_visuals(clientSlot.entity, clientSlot.team);
 
-    m_hud.setCharacterSize(22);
+    m_players.push_back(std::move(hostSlot));
+    m_players.push_back(std::move(clientSlot));
+
+
+    m_hud.setCharacterSize(20);
     m_hud.setPosition({ 14.f, 10.f });
 
-    // possible respawn positions
+    // spawn points used when a player dies
     m_spawn_points =
     {
         {150.f, 140.f},
@@ -148,17 +204,39 @@ GameState::GameState(StateStack& stack, Context context)
     };
 }
 
+GameState::PlayerSlot* GameState::find_player(int id)
+{
+    for (auto& p : m_players)
+    {
+        if (p.id == id)
+            return &p;
+    }
+
+    return nullptr;
+}
+
+const GameState::PlayerSlot* GameState::find_player(int id) const
+{
+    for (const auto& p : m_players)
+    {
+        if (p.id == id)
+            return &p;
+    }
+
+    return nullptr;
+}
+
 PlayerInput GameState::build_input_from_keybinds(const PlayerKeybinds& keys, bool& dashPrev)
 {
     PlayerInput input;
 
-    // reading movement keys
+    // movement keys
     if (sf::Keyboard::isKeyPressed(keys.up))    input.move.y -= 1.f;
     if (sf::Keyboard::isKeyPressed(keys.down))  input.move.y += 1.f;
     if (sf::Keyboard::isKeyPressed(keys.left))  input.move.x -= 1.f;
     if (sf::Keyboard::isKeyPressed(keys.right)) input.move.x += 1.f;
 
-    // normalising diagonal movement
+    // preventing faster diagonal movement
     float len = std::sqrt(input.move.x * input.move.x + input.move.y * input.move.y);
     if (len > 0.f)
     {
@@ -166,7 +244,7 @@ PlayerInput GameState::build_input_from_keybinds(const PlayerKeybinds& keys, boo
         input.move.y /= len;
     }
 
-    // reading combat input
+    // combat keys
     input.shootHeld = sf::Keyboard::isKeyPressed(keys.shoot);
 
     bool dashNow = sf::Keyboard::isKeyPressed(keys.dash);
@@ -203,7 +281,7 @@ void GameState::build_map()
     make_wall(0.f, 0.f, 20.f, H);
     make_wall(W - 20.f, 0.f, 20.f, H);
 
-    // map walls
+    // inside walls
     make_wall(W * 0.20f, H * 0.18f, 24.f, H * 0.52f);
     make_wall(W * 0.35f, H * 0.30f, W * 0.30f, 24.f);
     make_wall(W * 0.55f, H * 0.18f, 24.f, H * 0.55f);
@@ -213,7 +291,7 @@ void GameState::build_map()
 
 bool GameState::spawn_is_clear(sf::Vector2f p) const
 {
-    // checking that spawn is not inside a wall
+    // checking that the respawn point is not inside a wall
     sf::CircleShape probe;
     probe.setRadius(18.f);
     probe.setOrigin({ 18.f, 18.f });
@@ -230,7 +308,7 @@ bool GameState::spawn_is_clear(sf::Vector2f p) const
 
 sf::Vector2f GameState::pick_safe_spawn(const PlayerEntity& enemy) const
 {
-    // choosing a respawn far from enemy
+    // choosing a spawn away from the enemy
     const float min_dist = 200.f;
     const float min_dist_sq = min_dist * min_dist;
 
@@ -238,6 +316,7 @@ sf::Vector2f GameState::pick_safe_spawn(const PlayerEntity& enemy) const
     static std::mt19937 rng{ std::random_device{}() };
     std::shuffle(candidates.begin(), candidates.end(), rng);
 
+    // first pass: clear spawn with enough distance
     for (const auto& sp : candidates)
     {
         if (!spawn_is_clear(sp)) continue;
@@ -245,6 +324,7 @@ sf::Vector2f GameState::pick_safe_spawn(const PlayerEntity& enemy) const
             return sp;
     }
 
+    // second pass: farthest clear spawn
     sf::Vector2f best = candidates.front();
     float best_d2 = -1.f;
 
@@ -265,41 +345,32 @@ sf::Vector2f GameState::pick_safe_spawn(const PlayerEntity& enemy) const
 
 void GameState::Draw(sf::RenderTarget& target)
 {
-    // drawing background
+    // background
     sf::RectangleShape bg;
     bg.setSize(sf::Vector2f(m_window.getSize()));
     bg.setFillColor(sf::Color(18, 18, 28));
     target.draw(bg);
 
-    // drawing map and bullets
+    // map and bullets
     for (auto& w : m_walls) target.draw(w);
     for (auto& b : m_bullets) b.draw(target);
 
-    const bool p1Active = is_combat_team(m_p1_team);
-    const bool p2Active = is_combat_team(m_p2_team);
+    // draw connected combat players sorted by Y
+    std::vector<const PlayerSlot*> drawPlayers;
+    for (const auto& p : m_players)
+    {
+        if (p.connected && is_combat_team(p.team))
+            drawPlayers.push_back(&p);
+    }
 
-    // drawing only active players
-    if (p1Active && p2Active)
-    {
-        if (m_p1.position().y < m_p2.position().y)
+    std::sort(drawPlayers.begin(), drawPlayers.end(),
+        [](const PlayerSlot* a, const PlayerSlot* b)
         {
-            m_p1.draw(target);
-            m_p2.draw(target);
-        }
-        else
-        {
-            m_p2.draw(target);
-            m_p1.draw(target);
-        }
-    }
-    else if (p1Active)
-    {
-        m_p1.draw(target);
-    }
-    else if (p2Active)
-    {
-        m_p2.draw(target);
-    }
+            return a->entity.position().y < b->entity.position().y;
+        });
+
+    for (const auto* p : drawPlayers)
+        p->entity.draw(target);
 
     target.draw(m_hud);
 }
@@ -308,34 +379,49 @@ bool GameState::Update(sf::Time dt)
 {
     const auto& settings = *GetContext().settings;
 
-    PlayerInput p1Input{};
-    PlayerInput p2Input{};
+    PlayerSlot* hostPlayer = find_player(0);
+    PlayerSlot* clientPlayer = find_player(1);
+    PlayerSlot* localPlayer = find_player(m_local_player_id);
 
-    // building local input for the side controlled on this machine
-    if (settings.network_role == GameSettings::NetworkRole::Host)
+    PlayerInput hostInput{};
+    PlayerInput clientInput{};
+
+    // local machine builds input only for the player it owns
+    if (localPlayer && localPlayer->connected && is_combat_team(localPlayer->team))
     {
-        if (is_combat_team(m_p1_team))
-            p1Input = build_input_from_keybinds(settings.local_keys, m_p1_dash_prev);
-    }
-    else if (settings.network_role == GameSettings::NetworkRole::Client)
-    {
-        if (is_combat_team(m_p2_team))
-            p2Input = build_input_from_keybinds(settings.local_keys, m_p2_dash_prev);
-    }
-    else
-    {
-        // offline fallback
-        if (is_combat_team(m_p1_team))
-            p1Input = build_input_from_keybinds(settings.local_keys, m_p1_dash_prev);
-        if (is_combat_team(m_p2_team))
-            p2Input = build_input_from_keybinds(settings.local_keys, m_p2_dash_prev);
+        PlayerInput localBuilt = build_input_from_keybinds(settings.local_keys, localPlayer->dash_prev);
+
+        if (localPlayer->id == 0)
+            hostInput = localBuilt;
+        else if (localPlayer->id == 1)
+            clientInput = localBuilt;
     }
 
-    // host receives remote client input
+    // host receives join info first, then newest remote input
     if (settings.network_role == GameSettings::NetworkRole::Host)
     {
         if (m_host_session)
         {
+            if (clientPlayer && !clientPlayer->connected)
+            {
+                while (true)
+                {
+                    const auto joinInfo = m_host_session->poll_join_info();
+                    if (!joinInfo.has_value())
+                        break;
+
+                    clientPlayer->connected = true;
+                    clientPlayer->nickname = joinInfo->nickname;
+                    clientPlayer->team = decode_team(joinInfo->team);
+                    clientPlayer->entity.set_position(spawn_for_player_id(clientPlayer->id));
+
+                    if (is_combat_team(clientPlayer->team))
+                        apply_team_visuals(clientPlayer->entity, clientPlayer->team);
+
+                    std::cout << "Client joined: " << clientPlayer->nickname << "\n";
+                }
+            }
+
             while (true)
             {
                 const auto remote = m_host_session->poll_remote_input();
@@ -346,85 +432,74 @@ bool GameState::Update(sf::Time dt)
             }
         }
 
-        // applying newest client input to client-side player
-        if (m_remote_input.has_value() && is_combat_team(m_p2_team))
-        {
-            p2Input = *m_remote_input;
-        }
+        if (m_remote_input.has_value() && clientPlayer && clientPlayer->connected && is_combat_team(clientPlayer->team))
+            clientInput = *m_remote_input;
     }
     else if (settings.network_role == GameSettings::NetworkRole::Client)
     {
-        // client sends its own local input to host
-        if (m_client_session && is_combat_team(m_p2_team))
-        {
-            m_client_session->send_local_input(p2Input);
-        }
+        if (m_client_session && localPlayer && localPlayer->id == 1 && localPlayer->connected && is_combat_team(localPlayer->team))
+            m_client_session->send_local_input(clientInput);
     }
 
-    // updating active players only
-    if (is_combat_team(m_p1_team))
-        m_p1.update(dt, p1Input, m_walls);
+    // offline fallback
+    if (settings.network_role == GameSettings::NetworkRole::None)
+    {
+        if (hostPlayer && hostPlayer->connected && is_combat_team(hostPlayer->team))
+            hostInput = build_input_from_keybinds(settings.local_keys, hostPlayer->dash_prev);
+    }
 
-    if (is_combat_team(m_p2_team))
-        m_p2.update(dt, p2Input, m_walls);
+    // update all connected combat players
+    for (auto& p : m_players)
+    {
+        if (!p.connected || !is_combat_team(p.team))
+            continue;
 
-    // host simulates bullets and combat
+        PlayerInput input{};
+        if (p.id == 0) input = hostInput;
+        else if (p.id == 1) input = clientInput;
+
+        p.entity.update(dt, input, m_walls);
+    }
+
+    // host/offline simulates bullets and combat
     if (settings.network_role != GameSettings::NetworkRole::Client)
     {
-        // spawning bullets using actual team spell type
-        if (is_combat_team(m_p1_team) && m_p1.consume_shot_event())
+        // spawn bullets from all active players
+        for (auto& p : m_players)
         {
-            if (m_p1_team == GameSettings::Team::Fire)
+            if (!p.connected || !is_combat_team(p.team))
+                continue;
+
+            if (!p.entity.consume_shot_event())
+                continue;
+
+            if (p.team == GameSettings::Team::Fire)
             {
                 GetContext().sounds->Play(SoundID::kFireSpell);
                 m_bullets.emplace_back(
-                    m_p1.get_projectile_spawn_point(6.f),
-                    m_p1.facing_dir(),
-                    1,
+                    p.entity.get_projectile_spawn_point(6.f),
+                    p.entity.facing_dir(),
+                    p.id,
                     Bullet::SpellType::Fire
                 );
             }
-            else if (m_p1_team == GameSettings::Team::Water)
+            else if (p.team == GameSettings::Team::Water)
             {
                 GetContext().sounds->Play(SoundID::kWaterSpell);
                 m_bullets.emplace_back(
-                    m_p1.get_projectile_spawn_point(6.f),
-                    m_p1.facing_dir(),
-                    1,
+                    p.entity.get_projectile_spawn_point(6.f),
+                    p.entity.facing_dir(),
+                    p.id,
                     Bullet::SpellType::Water
                 );
             }
         }
 
-        if (is_combat_team(m_p2_team) && m_p2.consume_shot_event())
-        {
-            if (m_p2_team == GameSettings::Team::Fire)
-            {
-                GetContext().sounds->Play(SoundID::kFireSpell);
-                m_bullets.emplace_back(
-                    m_p2.get_projectile_spawn_point(6.f),
-                    m_p2.facing_dir(),
-                    2,
-                    Bullet::SpellType::Fire
-                );
-            }
-            else if (m_p2_team == GameSettings::Team::Water)
-            {
-                GetContext().sounds->Play(SoundID::kWaterSpell);
-                m_bullets.emplace_back(
-                    m_p2.get_projectile_spawn_point(6.f),
-                    m_p2.facing_dir(),
-                    2,
-                    Bullet::SpellType::Water
-                );
-            }
-        }
-
-        // moving bullets
+        // move bullets
         for (auto& b : m_bullets)
             b.update(dt);
 
-        // checking collision for bullets against walls
+        // bullet vs wall collision
         for (auto& b : m_bullets)
         {
             if (b.is_dead()) continue;
@@ -441,88 +516,79 @@ bool GameState::Update(sf::Time dt)
             }
         }
 
-        // checking bullet hits and preventing team kills
+        // bullet vs players
         for (auto& b : m_bullets)
         {
             if (b.is_dead()) continue;
 
+            PlayerSlot* shooter = find_player(b.owner());
+            if (!shooter || !shooter->connected)
+                continue;
+
             const sf::Vector2f bp = b.shape().getPosition();
             const float br = b.shape().getRadius();
 
-            // bullet from host side hitting client side
-            if (b.owner() == 1 && is_combat_team(m_p2_team) && !m_p2.is_invulnerable())
+            for (auto& targetPlayer : m_players)
             {
-                const bool sameTeam = (m_p1_team == m_p2_team);
+                if (!targetPlayer.connected || !is_combat_team(targetPlayer.team))
+                    continue;
 
-                if (!sameTeam && m_p2.bullet_hits_hurtbox(bp, br))
+                if (targetPlayer.id == b.owner())
+                    continue;
+
+                if (targetPlayer.entity.is_invulnerable())
+                    continue;
+
+                const bool sameTeam = (shooter->team == targetPlayer.team);
+
+                // preventing team kills
+                if (!sameTeam && targetPlayer.entity.bullet_hits_hurtbox(bp, br))
                 {
                     b.kill();
 
-                    if (m_p1_team == GameSettings::Team::Fire)
+                    if (shooter->team == GameSettings::Team::Fire)
                     {
                         GetContext().sounds->Play(SoundID::kFireHit);
                         ++m_fire_kills;
                     }
-                    else if (m_p1_team == GameSettings::Team::Water)
+                    else if (shooter->team == GameSettings::Team::Water)
                     {
                         GetContext().sounds->Play(SoundID::kWaterHit);
                         ++m_water_kills;
                     }
 
-                    m_p2.respawn(pick_safe_spawn(m_p1));
-                }
-            }
-
-            // bullet from client side hitting host side
-            else if (b.owner() == 2 && is_combat_team(m_p1_team) && !m_p1.is_invulnerable())
-            {
-                const bool sameTeam = (m_p1_team == m_p2_team);
-
-                if (!sameTeam && m_p1.bullet_hits_hurtbox(bp, br))
-                {
-                    b.kill();
-
-                    if (m_p2_team == GameSettings::Team::Fire)
-                    {
-                        GetContext().sounds->Play(SoundID::kFireHit);
-                        ++m_fire_kills;
-                    }
-                    else if (m_p2_team == GameSettings::Team::Water)
-                    {
-                        GetContext().sounds->Play(SoundID::kWaterHit);
-                        ++m_water_kills;
-                    }
-
-                    m_p1.respawn(pick_safe_spawn(m_p2));
+                    targetPlayer.entity.respawn(pick_safe_spawn(shooter->entity));
+                    break;
                 }
             }
         }
 
-        // removing dead bullets
+        // remove dead bullets
         m_bullets.erase(
-            std::remove_if(m_bullets.begin(), m_bullets.end(),
-                [](const Bullet& b) { return b.is_dead(); }),
+            std::remove_if(
+                m_bullets.begin(),
+                m_bullets.end(),
+                [](const Bullet& b) { return b.is_dead(); }
+            ),
             m_bullets.end()
         );
     }
 
-    // host sends world state to client
+    // host still sends only first 2 slots for now
     if (settings.network_role == GameSettings::NetworkRole::Host)
     {
-        if (m_host_session)
+        if (m_host_session && hostPlayer && clientPlayer)
         {
             WorldStatePacket state;
-
-            state.p1_pos = m_p1.position();
-            state.p2_pos = m_p2.position();
-            state.p1_dir = m_p1.facing_dir();
-            state.p2_dir = m_p2.facing_dir();
-            state.p1_team = encode_team(m_p1_team);
-            state.p2_team = encode_team(m_p2_team);
+            state.p1_pos = hostPlayer->entity.position();
+            state.p2_pos = clientPlayer->entity.position();
+            state.p1_dir = hostPlayer->entity.facing_dir();
+            state.p2_dir = clientPlayer->entity.facing_dir();
+            state.p1_team = encode_team(hostPlayer->team);
+            state.p2_team = encode_team(clientPlayer->team);
             state.fire_kills = m_fire_kills;
             state.water_kills = m_water_kills;
 
-            // sending bullets to client
             for (const auto& b : m_bullets)
             {
                 if (b.is_dead()) continue;
@@ -531,9 +597,12 @@ bool GameState::Update(sf::Time dt)
                 bs.pos = b.shape().getPosition();
                 bs.dir = b.direction();
                 bs.owner = b.owner();
-                bs.spell = (b.owner() == 1 && m_p1_team == GameSettings::Team::Water) ||
-                    (b.owner() == 2 && m_p2_team == GameSettings::Team::Water)
-                    ? 1 : 0;
+
+                PlayerSlot* ownerPlayer = find_player(b.owner());
+                if (ownerPlayer && ownerPlayer->team == GameSettings::Team::Water)
+                    bs.spell = 1;
+                else
+                    bs.spell = 0;
 
                 state.bullets.push_back(bs);
             }
@@ -542,7 +611,7 @@ bool GameState::Update(sf::Time dt)
         }
     }
 
-    // client receives latest world state from host
+    // client still receives only first 2 slots for now
     if (settings.network_role == GameSettings::NetworkRole::Client)
     {
         if (m_client_session)
@@ -556,30 +625,30 @@ bool GameState::Update(sf::Time dt)
                 m_latest_world_state = *state;
             }
 
-            if (m_latest_world_state.has_value())
+            if (m_latest_world_state.has_value() && hostPlayer && clientPlayer)
             {
-                const auto newP1Team = decode_team(m_latest_world_state->p1_team);
-                const auto newP2Team = decode_team(m_latest_world_state->p2_team);
+                const auto newHostTeam = decode_team(m_latest_world_state->p1_team);
+                const auto newClientTeam = decode_team(m_latest_world_state->p2_team);
 
-                if (newP1Team != m_p1_team)
+                if (newHostTeam != hostPlayer->team)
                 {
-                    m_p1_team = newP1Team;
-                    if (is_combat_team(m_p1_team))
-                        apply_team_visuals(m_p1, m_p1_team);
+                    hostPlayer->team = newHostTeam;
+                    if (is_combat_team(hostPlayer->team))
+                        apply_team_visuals(hostPlayer->entity, hostPlayer->team);
                 }
 
-                if (newP2Team != m_p2_team)
+                if (newClientTeam != clientPlayer->team)
                 {
-                    m_p2_team = newP2Team;
-                    if (is_combat_team(m_p2_team))
-                        apply_team_visuals(m_p2, m_p2_team);
+                    clientPlayer->team = newClientTeam;
+                    if (is_combat_team(clientPlayer->team))
+                        apply_team_visuals(clientPlayer->entity, clientPlayer->team);
                 }
 
-                m_p1.set_position(m_latest_world_state->p1_pos);
-                m_p2.set_position(m_latest_world_state->p2_pos);
+                hostPlayer->entity.set_position(m_latest_world_state->p1_pos);
+                clientPlayer->entity.set_position(m_latest_world_state->p2_pos);
 
-                m_p1.set_facing_dir(m_latest_world_state->p1_dir);
-                m_p2.set_facing_dir(m_latest_world_state->p2_dir);
+                hostPlayer->entity.set_facing_dir(m_latest_world_state->p1_dir);
+                clientPlayer->entity.set_facing_dir(m_latest_world_state->p2_dir);
 
                 m_fire_kills = m_latest_world_state->fire_kills;
                 m_water_kills = m_latest_world_state->water_kills;
@@ -597,14 +666,47 @@ bool GameState::Update(sf::Time dt)
         }
     }
 
-    // updating HUD text
+    // HUD from player list
     std::ostringstream ss;
+
+    std::string localName = "Player";
+    std::string localTeam = "Spectator";
+    std::string otherSummary = "None";
+
+    if (localPlayer)
+    {
+        localName = localPlayer->nickname;
+        localTeam = team_to_string(localPlayer->team);
+    }
+
+    std::vector<std::string> others;
+    for (const auto& p : m_players)
+    {
+        if (!p.connected || p.id == m_local_player_id)
+            continue;
+
+        others.push_back(p.nickname + " [" + team_to_string(p.team) + "]");
+    }
+
+    if (!others.empty())
+    {
+        otherSummary.clear();
+        for (std::size_t i = 0; i < others.size(); ++i)
+        {
+            if (i > 0) otherSummary += ", ";
+            otherSummary += others[i];
+        }
+    }
+
     ss << "Fire: " << m_fire_kills
         << "   |   Water: " << m_water_kills
-        << "   (First to " << m_kills_to_win << ")";
+        << "   (First to " << m_kills_to_win << ")\n"
+        << "You: " << localName << " [" << localTeam << "]\n"
+        << "Others: " << otherSummary;
+
     m_hud.setString(ss.str());
 
-    // checking win condition
+    // win condition
     if (m_fire_kills >= m_kills_to_win || m_water_kills >= m_kills_to_win)
     {
         RequestStackClear();

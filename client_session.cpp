@@ -26,6 +26,14 @@ bool ClientSession::is_connected() const
     return m_network->is_connected();
 }
 
+bool ClientSession::send_join_info(const JoinInfoPacket& joinInfo)
+{
+    if (!m_network)
+        return false;
+
+    return m_network->send_join_info(joinInfo);
+}
+
 bool ClientSession::send_local_input(const PlayerInput& input)
 {
     if (!m_network)

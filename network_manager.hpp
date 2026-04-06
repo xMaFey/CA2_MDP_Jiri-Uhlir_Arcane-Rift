@@ -28,9 +28,15 @@ public:
     bool is_connected() const;
     Mode mode() const;
 
+    // join packet
+    bool send_join_info(const JoinInfoPacket& joinInfo);
+    std::optional<JoinInfoPacket> receive_join_info();
+
+    // input packet
     bool send_input(const PlayerInput& input);
     std::optional<PlayerInput> receive_input();
 
+    // world state packet
     bool send_world_state(const WorldStatePacket& state);
     std::optional<WorldStatePacket> receive_world_state();
 

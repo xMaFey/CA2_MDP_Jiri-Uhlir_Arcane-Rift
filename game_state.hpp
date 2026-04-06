@@ -28,6 +28,16 @@ public:
     bool HandleEvent(const sf::Event& event) override;
 
 private:
+    struct PlayerSlot
+    {
+        int id = -1;
+        std::string nickname = "Player";
+        GameSettings::Team team = GameSettings::Team::Spectator;
+        PlayerEntity entity;
+        bool dash_prev = false;
+        bool connected = false;
+    };
+
     void build_map();
 
     // respawn helpers
@@ -36,20 +46,17 @@ private:
 
     PlayerInput build_input_from_keybinds(const PlayerKeybinds& keys, bool& dashPrev);
 
+    PlayerSlot* find_player(int id);
+    const PlayerSlot* find_player(int id) const;
+
 private:
     sf::RenderWindow& m_window;
 
     std::vector<sf::RectangleShape> m_walls;
 	std::vector<sf::Vector2f> m_spawn_points;
 
-    PlayerEntity m_p1; // host-side player slot
-    PlayerEntity m_p2; // client-side player slot
-
-    GameSettings::Team m_p1_team = GameSettings::Team::Spectator; // host side
-    GameSettings::Team m_p2_team = GameSettings::Team::Spectator; // client side
-
-    bool m_p1_dash_prev = false;
-    bool m_p2_dash_prev = false;
+    std::vector<PlayerSlot> m_players;
+    int m_local_player_id = 0;
 
     std::vector<Bullet> m_bullets;
 
@@ -60,7 +67,7 @@ private:
     std::unique_ptr<HostSession> m_host_session;
     std::unique_ptr<ClientSession> m_client_session;
 
-    std::optional<PlayerInput> m_remote_input;
+    std::optional<PlayerInput> m_remote_input; // temporary: still only one remote input stream
     std::optional<WorldStatePacket> m_latest_world_state;
 
     sf::Text m_hud;

@@ -17,7 +17,13 @@ public:
     bool start(unsigned short port);
     bool is_connected() const;
 
+    // join packet from client
+    std::optional<JoinInfoPacket> poll_join_info();
+
+    // gameplay input from client
     std::optional<PlayerInput> poll_remote_input();
+
+    // world state sent to client
     bool send_world_state(const WorldStatePacket& state);
 
 private:
