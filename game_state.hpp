@@ -42,8 +42,11 @@ private:
     std::vector<sf::RectangleShape> m_walls;
 	std::vector<sf::Vector2f> m_spawn_points;
 
-    PlayerEntity m_p1; // Fire player
-    PlayerEntity m_p2; // Water player
+    PlayerEntity m_p1; // host-side player slot
+    PlayerEntity m_p2; // client-side player slot
+
+    GameSettings::Team m_p1_team = GameSettings::Team::Spectator; // host side
+    GameSettings::Team m_p2_team = GameSettings::Team::Spectator; // client side
 
     bool m_p1_dash_prev = false;
     bool m_p2_dash_prev = false;

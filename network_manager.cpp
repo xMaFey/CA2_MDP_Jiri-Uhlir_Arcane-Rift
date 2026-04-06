@@ -42,6 +42,8 @@ namespace
             << state.p2_pos.x << state.p2_pos.y
             << state.p1_dir.x << state.p1_dir.y
             << state.p2_dir.x << state.p2_dir.y
+            << state.p1_team
+            << state.p2_team
             << state.fire_kills << state.water_kills;
 
         packet << static_cast<uint32_t>(state.bullets.size());
@@ -59,6 +61,8 @@ namespace
             >> state.p2_pos.x >> state.p2_pos.y
             >> state.p1_dir.x >> state.p1_dir.y
             >> state.p2_dir.x >> state.p2_dir.y
+            >> state.p1_team
+            >> state.p2_team
             >> state.fire_kills >> state.water_kills;
 
         uint32_t count = 0;
