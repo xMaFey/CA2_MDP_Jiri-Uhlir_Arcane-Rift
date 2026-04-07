@@ -120,6 +120,15 @@ sfml-window-d.lib;
 
 sfml-system-d.lib;sfml-audio-d.lib;sfml-network-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>echo ===== POST BUILD START =====
+echo ProjectDir=$(ProjectDir)
+echo TargetDir=$(TargetDir)
+if not exist "$(TargetDir)" mkdir "$(TargetDir)"
+xcopy /Y /D "$(ProjectDir)external\SFML-3.0.1\bin\*.dll" "$(TargetDir)"
+copy /Y "$(ProjectDir)ip.txt" "$(TargetDir)"
+echo ===== POST BUILD END =====</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -140,8 +149,13 @@ sfml-system-d.lib;sfml-audio-d.lib;sfml-network-d.lib;%(AdditionalDependencies)<
       <AdditionalDependencies>sfml-graphics.lib;sfml-window.lib;sfml-system.lib;sfml-audio.lib;sfml-network.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /D "$(ProjectDir)external\SFML-3.0.1\bin\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)ip.txt" "$(OutDir)"</Command>
+      <Command>echo ===== POST BUILD START =====
+echo ProjectDir=$(ProjectDir)
+echo TargetDir=$(TargetDir)
+if not exist "$(TargetDir)" mkdir "$(TargetDir)"
+xcopy /Y /D "$(ProjectDir)external\SFML-3.0.1\bin\*.dll" "$(TargetDir)"
+copy /Y "$(ProjectDir)ip.txt" "$(TargetDir)"
+echo ===== POST BUILD END =====</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
