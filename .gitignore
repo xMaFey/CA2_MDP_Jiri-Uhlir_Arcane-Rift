@@ -28,11 +28,9 @@ x86/
 [Aa][Rr][Mm]64/
 bld/
 [Bb]in/
-
-# Allow SFML runtime binaries (do not ignore these)
-!external/SFML/bin/
-!external/SFML/bin/*.dll
-
+# Allow SFML runtime binaries
+!external/SFML-3.0.1/bin/
+!external/SFML-3.0.1/bin/*.dll
 [Oo]bj/
 [Oo]ut/
 [Ll]og/
