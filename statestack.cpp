@@ -71,9 +71,9 @@ void StateStack::ApplyPendingChanges()
 			m_stack.emplace_back(CreateState(change.state_id));
 			break;
 		case StackActions::kPop:
-			m_stack.pop_back();
+			if (!m_stack.empty())
+				m_stack.pop_back();
 			break;
-			//TODO should we clear the pending list when queueing up clear
 		case StackActions::kClear:
 			m_stack.clear();
 			break;

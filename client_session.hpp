@@ -24,6 +24,9 @@ public:
     // send gameplay input to host
     bool send_local_input(const PlayerInput& input);
 
+    // send team switch request to host
+    bool send_team_change_request(const TeamChangeRequestPacket& request);
+
     // receive host world state
     std::optional<WorldStatePacket> poll_world_state();
 

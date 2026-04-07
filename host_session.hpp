@@ -21,10 +21,16 @@ public:
     std::optional<JoinInfoPacket> poll_join_info();
 
     // gameplay input from client
-    std::optional<PlayerInput> poll_remote_input();
+    std::optional<std::pair<int, PlayerInput>> poll_remote_input();
+
+    // team switch request from client
+    std::optional<std::pair<int, TeamChangeRequestPacket>> poll_team_change_request();
 
     // world state sent to client
-    bool send_world_state(const WorldStatePacket& state);
+    bool send_world_state_to_player(int player_id, const WorldStatePacket& state);
+    bool send_world_state_to_all(const WorldStatePacket& state);
+
+    std::vector<int> consume_disconnected_player_ids();
 
 private:
     NetworkManager* m_network = nullptr;

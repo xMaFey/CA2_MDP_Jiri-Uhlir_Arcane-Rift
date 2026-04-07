@@ -17,11 +17,13 @@
 #include <memory>
 #include <optional>
 #include "network_packets.hpp"
+#include <unordered_map>
 
 class GameState : public State
 {
 public:
     GameState(StateStack& stack, Context context);
+    ~GameState() override;
 
     void Draw(sf::RenderTarget& target) override;
     bool Update(sf::Time dt) override;
@@ -36,6 +38,11 @@ private:
         PlayerEntity entity;
         bool dash_prev = false;
         bool connected = false;
+
+        // If true, the player has requested a team switch.
+        // The host applies it only after this player dies.
+        bool has_pending_team_change = false;
+        GameSettings::Team pending_team = GameSettings::Team::Spectator;
     };
 
     void build_map();
@@ -49,6 +56,14 @@ private:
     PlayerSlot* find_player(int id);
     const PlayerSlot* find_player(int id) const;
 
+    PlayerSlot& ensure_player_slot(int id);
+
+    void queue_team_change(PlayerSlot& player, GameSettings::Team newTeam);
+    void apply_team_change_now(PlayerSlot& player, GameSettings::Team newTeam);
+    int count_connected_players_on_team(GameSettings::Team team) const;
+    bool can_join_team(GameSettings::Team team, int ignorePlayerId = -1) const;
+    PlayerSlot* get_local_player_slot();
+
 private:
     sf::RenderWindow& m_window;
 
@@ -56,7 +71,9 @@ private:
 	std::vector<sf::Vector2f> m_spawn_points;
 
     std::vector<PlayerSlot> m_players;
-    int m_local_player_id = 0;
+
+    // -1 means the local client has not received its real player id yet.
+    int m_local_player_id = -1;
 
     std::vector<Bullet> m_bullets;
 
@@ -67,8 +84,14 @@ private:
     std::unique_ptr<HostSession> m_host_session;
     std::unique_ptr<ClientSession> m_client_session;
 
-    std::optional<PlayerInput> m_remote_input; // temporary: still only one remote input stream
+    std::unordered_map<int, PlayerInput> m_remote_inputs; // newest input per remote player id
     std::optional<WorldStatePacket> m_latest_world_state;
 
     sf::Text m_hud;
+
+    bool m_pause_open = false;
+
+    sf::RectangleShape m_pause_overlay;
+    sf::Text m_pause_title;
+    sf::Text m_pause_options;
 };

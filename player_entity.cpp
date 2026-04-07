@@ -19,7 +19,7 @@ PlayerEntity::PlayerEntity()
 	m_body.setOutlineColor(sf::Color(255, 255, 255, 140));
 }
 
-static constexpr bool kDrawHurtboxDebug = true;
+static constexpr bool kDrawHurtboxDebug = false;
 
 static std::vector<std::filesystem::path> sorted_pngs(const std::filesystem::path& folder)
 {

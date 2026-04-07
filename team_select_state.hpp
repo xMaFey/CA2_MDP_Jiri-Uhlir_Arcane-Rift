@@ -35,7 +35,7 @@ private:
 
     std::string m_nickname = "Player";
 
-    int m_fire_count = 5;
-    int m_water_count = 5;
+    int m_fire_count = 0;
+    int m_water_count = 0;
     int m_team_limit = 10;
 };

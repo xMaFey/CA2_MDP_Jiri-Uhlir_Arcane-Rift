@@ -19,7 +19,6 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
         {
             auto& settings = *GetContext().settings;
             settings.network_role = GameSettings::NetworkRole::Host;
-            settings.server_ip = "127.0.0.1";
             settings.server_port = 53000;
 
             GetContext().sounds->Play(SoundID::kButton);

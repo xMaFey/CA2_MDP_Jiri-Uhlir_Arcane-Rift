@@ -61,9 +61,11 @@ GameOverState::GameOverState(StateStack& stack, Context context)
     play_again->SetCallback([this]()
         {
             GetContext().sounds->Play(SoundID::kButton);
+
+            // Go back to team select before starting a new match.
             RequestStackClear();
-            RequestStackPush(StateID::kGame);
-		});
+            RequestStackPush(StateID::kTeamSelect);
+        });
 
     auto back_to_menu = std::make_shared<gui::Button>(*context.fonts, *context.textures);
 	back_to_menu->SetText("Back to Menu (Escape)");
@@ -105,9 +107,9 @@ bool GameOverState::HandleEvent(const sf::Event& event)
 
     if (key->scancode == sf::Keyboard::Scancode::Enter)
     {
-        // Restart the match: clear stack and go straight to game
+        // Restart flow through team select.
         RequestStackClear();
-        RequestStackPush(StateID::kGame);
+        RequestStackPush(StateID::kTeamSelect);
         return true;
     }
 

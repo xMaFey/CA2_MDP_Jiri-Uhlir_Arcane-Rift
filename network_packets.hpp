@@ -14,7 +14,8 @@ enum class PacketType
 {
     JoinInfo = 1,
     PlayerInput = 2,
-    WorldState = 3
+    WorldState = 3,
+    TeamChangeRequest = 4
 };
 
 enum class NetTeam
@@ -27,28 +28,48 @@ enum class NetTeam
 // sent once by client after connecting
 struct JoinInfoPacket
 {
+    int player_id = -1;
     std::string nickname = "Player";
     int team = static_cast<int>(NetTeam::Spectator);
+};
+
+// sent by client to host when the player wants to switch team
+struct TeamChangeRequestPacket
+{
+    int requested_team = static_cast<int>(NetTeam::Spectator);
+};
+
+struct PlayerNetState
+{
+    int id = -1;
+    std::string nickname = "Player";
+    sf::Vector2f pos{ 0.f, 0.f };
+    sf::Vector2f dir{ 1.f, 0.f };
+    int team = static_cast<int>(NetTeam::Spectator);
+    bool connected = false;
+
+    // Pending team switch info, sent by host so clients can show it in HUD.
+    bool has_pending_team_change = false;
+    int pending_team = static_cast<int>(NetTeam::Spectator);
 };
 
 struct BulletState
 {
     sf::Vector2f pos{ 0.f, 0.f };
     sf::Vector2f dir{ 1.f, 0.f };
-    int owner = 0;      // 1 = host side, 2 = client side
+    int owner = 0;      // player id of the bullet owner
     int spell = 0;      // 0 = fire, 1 = water
 };
 
 struct WorldStatePacket
 {
-    sf::Vector2f p1_pos{ 0.f, 0.f };
-    sf::Vector2f p2_pos{ 0.f, 0.f };
+    int your_player_id = -1; // tells each client which player slot is theirs
 
-    sf::Vector2f p1_dir{ 1.f, 0.f };
-    sf::Vector2f p2_dir{ 1.f, 0.f };
+    std::vector<PlayerNetState> players;
 
-    int p1_team = static_cast<int>(NetTeam::Spectator);
-    int p2_team = static_cast<int>(NetTeam::Spectator);
+    int fire_count = 0;
+    int water_count = 0;
+    int spectator_count = 0;
 
     int fire_kills = 0;
     int water_kills = 0;

@@ -15,14 +15,17 @@
 #include <fstream>
 #include <iostream>
 
-Application::Application() : m_window(sf::VideoMode({ 1280, 720 }), "States", sf::Style::Close)
-, m_textures()
-, m_fonts()
-, m_stack(State::Context(m_window, m_textures, m_fonts, m_sounds, m_music, m_settings, m_network))
-, m_sounds()
-, m_music()
-, m_scene_texture(m_window.getSize())
-, m_scene_sprite(m_scene_texture.getTexture())
+Application::Application()
+	: m_window(sf::VideoMode({ 1280, 720 }), "States", sf::Style::Close)
+	, m_textures()
+	, m_fonts()
+	, m_sounds()
+	, m_music()
+	, m_settings()
+	, m_network()
+	, m_stack(State::Context(m_window, m_textures, m_fonts, m_sounds, m_music, m_settings, m_network))
+	, m_scene_texture(m_window.getSize())
+	, m_scene_sprite(m_scene_texture.getTexture())
 {
 	m_window.setKeyRepeatEnabled(false);
 

@@ -43,5 +43,11 @@ struct GameSettings
     std::string server_ip = "127.0.0.1";
 
     unsigned short server_port = 53000;
+
+    int latest_fire_count = 0;
+    int latest_water_count = 0;
+    int latest_spectator_count = 0;
+    int team_limit = 10;
 };
+
 

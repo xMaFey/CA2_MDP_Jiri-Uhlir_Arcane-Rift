@@ -42,6 +42,14 @@ bool ClientSession::send_local_input(const PlayerInput& input)
     return m_network->send_input(input);
 }
 
+bool ClientSession::send_team_change_request(const TeamChangeRequestPacket& request)
+{
+    if (!m_network)
+        return false;
+
+    return m_network->send_team_change_request(request);
+}
+
 std::optional<WorldStatePacket> ClientSession::poll_world_state()
 {
     if (!m_network)

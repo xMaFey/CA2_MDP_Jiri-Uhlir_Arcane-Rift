@@ -34,7 +34,7 @@ std::optional<JoinInfoPacket> HostSession::poll_join_info()
     return m_network->receive_join_info();
 }
 
-std::optional<PlayerInput> HostSession::poll_remote_input()
+std::optional<std::pair<int, PlayerInput>> HostSession::poll_remote_input()
 {
     if (!m_network)
         return std::nullopt;
@@ -42,10 +42,34 @@ std::optional<PlayerInput> HostSession::poll_remote_input()
     return m_network->receive_input();
 }
 
-bool HostSession::send_world_state(const WorldStatePacket& state)
+std::optional<std::pair<int, TeamChangeRequestPacket>> HostSession::poll_team_change_request()
+{
+    if (!m_network)
+        return std::nullopt;
+
+    return m_network->receive_team_change_request();
+}
+
+bool HostSession::send_world_state_to_player(int player_id, const WorldStatePacket& state)
 {
     if (!m_network)
         return false;
 
-    return m_network->send_world_state(state);
+    return m_network->send_world_state_to_player(player_id, state);
+}
+
+bool HostSession::send_world_state_to_all(const WorldStatePacket& state)
+{
+    if (!m_network)
+        return false;
+
+    return m_network->send_world_state_to_all(state);
+}
+
+std::vector<int> HostSession::consume_disconnected_player_ids()
+{
+    if (!m_network)
+        return {};
+
+    return m_network->consume_disconnected_player_ids();
 }

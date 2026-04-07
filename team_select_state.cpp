@@ -59,7 +59,7 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
 
             GetContext().sounds->Play(SoundID::kButton);
 
-            RequestStackPop();
+            RequestStackClear();
             RequestStackPush(StateID::kGame);
         });
 
@@ -78,7 +78,7 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
 
             GetContext().sounds->Play(SoundID::kButton);
 
-            RequestStackPop();
+            RequestStackClear();
             RequestStackPush(StateID::kGame);
         });
 
@@ -94,7 +94,7 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
 
             GetContext().sounds->Play(SoundID::kButton);
 
-            RequestStackPop();
+            RequestStackClear();
             RequestStackPush(StateID::kGame);
         });
 
@@ -127,6 +127,10 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
 
         m_mode_text.setString(mode);
         Utility::CentreOrigin(m_mode_text);
+
+        m_fire_count = settings.latest_fire_count;
+        m_water_count = settings.latest_water_count;
+        m_team_limit = settings.team_limit;
 
         m_name_text.setString("Nickname: " + m_nickname);
         m_fire_text.setString("Fire Team: " + std::to_string(m_fire_count) + "/" + std::to_string(m_team_limit));

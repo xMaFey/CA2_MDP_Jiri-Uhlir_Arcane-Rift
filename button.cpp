@@ -98,6 +98,9 @@ void gui::Button::draw(sf::RenderTarget& target, sf::RenderStates states) const
 
 bool gui::Button::Contains(sf::Vector2f point_in_parent_space) const
 {
-	const sf::Vector2f local = getInverseTransform().transformPoint(point_in_parent_space);
-    return m_sprite.getGlobalBounds().contains(local);
+    // Convert the point from parent/container space into this button's local space.
+    const sf::Vector2f local = getInverseTransform().transformPoint(point_in_parent_space);
+
+    // Compare local point against local sprite bounds.
+    return m_sprite.getLocalBounds().contains(local);
 }
