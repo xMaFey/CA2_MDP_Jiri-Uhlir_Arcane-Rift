@@ -71,8 +71,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(ProjectDir)external\SFML\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)external\SFML\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)external\SFML-3.0.1\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)external\SFML-3.0.1\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -140,8 +140,8 @@ sfml-system-d.lib;sfml-audio-d.lib;sfml-network-d.lib;%(AdditionalDependencies)<
       <AdditionalDependencies>sfml-graphics.lib;sfml-window.lib;sfml-system.lib;sfml-audio.lib;sfml-network.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /D "$(ProjectDir)external\SFML\bin\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)ip" "$(OutDir)"</Command>
+      <Command>xcopy /Y /D "$(ProjectDir)external\SFML-3.0.1\bin\*.dll" "$(OutDir)"
+copy /Y "$(ProjectDir)ip.txt" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
