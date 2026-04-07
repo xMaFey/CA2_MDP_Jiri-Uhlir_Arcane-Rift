@@ -267,7 +267,10 @@ GameState::PlayerSlot& GameState::ensure_player_slot(int id)
     newSlot.connected = false;
     newSlot.entity.set_position(spawn_for_player_id(id));
 
+    // With std::deque, adding a new slot does not force all previous player slots
+    // to move like std::vector can. That makes PlayerEntity texture/sprite lifetime safer.
     m_players.push_back(std::move(newSlot));
+
     return m_players.back();
 }
 

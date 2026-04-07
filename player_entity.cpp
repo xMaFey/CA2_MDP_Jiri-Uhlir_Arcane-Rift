@@ -48,6 +48,10 @@ void PlayerEntity::set_animation_root(const std::string& root)
     // default pose
     set_anim(AnimState::Idle, "east");
 
+    // Make sure the sprite starts at the correct world position immediately.
+    if (m_sprite)
+        m_sprite->setPosition(m_body.getPosition());
+
     std::cout << "Anim root:" << m_anim_root << "\n";
 }
 
@@ -219,7 +223,14 @@ void PlayerEntity::advance_anim(sf::Time dt)
         m_sprite->setTexture(it->second[m_frame_index], true);
 }
 
-void PlayerEntity::set_position(sf::Vector2f p) { m_body.setPosition(p); }
+void PlayerEntity::set_position(sf::Vector2f p)
+{
+    m_body.setPosition(p);
+
+    // Keep the sprite aligned even for snapshot-driven remote players.
+    if (m_sprite)
+        m_sprite->setPosition(p);
+}
 
 void PlayerEntity::set_facing_dir(sf::Vector2f dir)
 {

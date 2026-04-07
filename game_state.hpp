@@ -18,6 +18,7 @@
 #include <optional>
 #include "network_packets.hpp"
 #include <unordered_map>
+#include <deque>
 
 class GameState : public State
 {
@@ -70,7 +71,7 @@ private:
     std::vector<sf::RectangleShape> m_walls;
 	std::vector<sf::Vector2f> m_spawn_points;
 
-    std::vector<PlayerSlot> m_players;
+    std::deque<PlayerSlot> m_players;
 
     // -1 means the local client has not received its real player id yet.
     int m_local_player_id = -1;
