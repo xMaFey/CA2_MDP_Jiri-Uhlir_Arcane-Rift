@@ -26,10 +26,13 @@ namespace gui
 
 		virtual void HandleEvent(const sf::Event& event) = 0;
 
+		void SetEnabled(bool enabled);
+		bool IsEnabled() const;
+
 	private:
 		bool m_is_selected;
 		bool m_is_active;
-
+		bool m_is_enabled;
 	};
 }
 

@@ -109,7 +109,8 @@ GameState::GameState(StateStack& stack, Context context)
 
     GetContext().music->Stop();
 
-    // starting networking
+    // Networking should already be running if we came here from the lobby.
+// Reuse the existing host/client connection instead of reconnecting.
     if (GetContext().network)
     {
         auto& network = *GetContext().network;
@@ -118,29 +119,44 @@ GameState::GameState(StateStack& stack, Context context)
         {
             m_host_session = std::make_unique<HostSession>(network);
 
-            const bool ok = m_host_session->start(settings.server_port);
-            if (ok)
-                std::cout << "Host started on port " << settings.server_port << "\n";
-            else
-                std::cout << "Host failed\n";
+            if (network.mode() != NetworkManager::Mode::Host || !network.is_connected())
+            {
+                const bool ok = m_host_session->start(settings.server_port);
+                if (ok)
+                    std::cout << "Host started on port " << settings.server_port << "\n";
+                else
+                    std::cout << "Host failed\n";
+            }
         }
         else if (settings.network_role == GameSettings::NetworkRole::Client)
         {
             m_client_session = std::make_unique<ClientSession>(network);
 
-            const auto ip = sf::IpAddress::resolve(settings.server_ip);
+            bool ready = false;
 
-            bool ok = false;
-            if (ip.has_value())
-                ok = m_client_session->connect(*ip, settings.server_port);
+            if (network.mode() != NetworkManager::Mode::Client || !network.is_connected())
+            {
+                const auto ip = sf::IpAddress::resolve(settings.server_ip);
 
-            std::cout << (ok ? "Client connected\n" : "Client failed to connect\n");
+                bool ok = false;
+                if (ip.has_value())
+                    ok = m_client_session->connect(*ip, settings.server_port);
 
-            // sending chosen nickname and team to host once after connect
-            if (ok && m_client_session)
+                std::cout << (ok ? "Client connected\n" : "Client failed to connect\n");
+                ready = ok;
+            }
+            else
+            {
+                // Reusing the existing lobby connection.
+                ready = true;
+            }
+
+            // Even when reusing the lobby connection, resend JoinInfo so the
+            // host's GameState rebuilds the correct remote player slots.
+            if (ready && m_client_session)
             {
                 JoinInfoPacket joinInfo;
-                joinInfo.player_id = -1; // host assigns the real remote player id
+                joinInfo.player_id = -1;
                 joinInfo.nickname = settings.nickname;
                 joinInfo.team = encode_team(settings.chosen_team);
 

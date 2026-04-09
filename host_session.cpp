@@ -66,6 +66,22 @@ bool HostSession::send_world_state_to_all(const WorldStatePacket& state)
     return m_network->send_world_state_to_all(state);
 }
 
+bool HostSession::send_lobby_state_to_player(int player_id, const LobbyStatePacket& state)
+{
+    if (!m_network)
+        return false;
+
+    return m_network->send_lobby_state_to_player(player_id, state);
+}
+
+bool HostSession::send_lobby_state_to_all(const LobbyStatePacket& state)
+{
+    if (!m_network)
+        return false;
+
+    return m_network->send_lobby_state_to_all(state);
+}
+
 std::vector<int> HostSession::consume_disconnected_player_ids()
 {
     if (!m_network)

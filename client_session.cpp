@@ -57,3 +57,11 @@ std::optional<WorldStatePacket> ClientSession::poll_world_state()
 
     return m_network->receive_world_state();
 }
+
+std::optional<LobbyStatePacket> ClientSession::poll_lobby_state()
+{
+    if (!m_network)
+        return std::nullopt;
+
+    return m_network->receive_lobby_state();
+}

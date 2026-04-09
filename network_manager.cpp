@@ -30,6 +30,73 @@ namespace
         return packet >> request.requested_team;
     }
 
+    // serializing lobby player state
+    sf::Packet& operator<<(sf::Packet& packet, const LobbyPlayerState& p)
+    {
+        return packet
+            << p.id
+            << p.nickname
+            << p.team
+            << p.connected;
+    }
+
+    sf::Packet& operator>>(sf::Packet& packet, LobbyPlayerState& p)
+    {
+        return packet
+            >> p.id
+            >> p.nickname
+            >> p.team
+            >> p.connected;
+    }
+
+    // serializing lobby state
+    sf::Packet& operator<<(sf::Packet& packet, const LobbyStatePacket& state)
+    {
+        packet
+            << state.your_player_id
+            << state.fire_count
+            << state.water_count
+            << state.spectator_count
+            << state.can_join_fire
+            << state.can_join_water
+            << state.can_spectate
+            << state.match_started
+            << static_cast<uint32_t>(state.players.size());
+
+        for (const auto& p : state.players)
+            packet << p;
+
+        return packet;
+    }
+
+    sf::Packet& operator>>(sf::Packet& packet, LobbyStatePacket& state)
+    {
+        uint32_t playerCount = 0;
+
+        packet
+            >> state.your_player_id
+            >> state.fire_count
+            >> state.water_count
+            >> state.spectator_count
+            >> state.can_join_fire
+            >> state.can_join_water
+            >> state.can_spectate
+            >> state.match_started
+            >> playerCount;
+
+        state.players.clear();
+        state.players.reserve(playerCount);
+
+        for (uint32_t i = 0; i < playerCount; ++i)
+        {
+            LobbyPlayerState p;
+            packet >> p;
+            state.players.push_back(p);
+        }
+
+        return packet;
+    }
+
     // serializing player net state
     sf::Packet& operator<<(sf::Packet& packet, const PlayerNetState& p)
     {
@@ -456,6 +523,74 @@ std::optional<std::pair<int, TeamChangeRequestPacket>> NetworkManager::receive_t
     }
 
     return std::nullopt;
+}
+
+bool NetworkManager::send_lobby_state_to_player(int player_id, const LobbyStatePacket& state)
+{
+    if (m_mode == Mode::Client || !m_connected)
+        return false;
+
+    accept_new_clients();
+
+    for (auto& client : m_host_clients)
+    {
+        if (!client.socket)
+            continue;
+
+        if (client.player_id != player_id)
+            continue;
+
+        sf::Packet packet = make_typed_packet(PacketType::LobbyState);
+        packet << state;
+
+        return client.socket->send(packet) == sf::Socket::Status::Done;
+    }
+
+    return false;
+}
+
+bool NetworkManager::send_lobby_state_to_all(const LobbyStatePacket& state)
+{
+    if (m_mode == Mode::Client || !m_connected)
+        return false;
+
+    accept_new_clients();
+
+    bool sentAny = false;
+
+    for (auto& client : m_host_clients)
+    {
+        if (!client.socket)
+            continue;
+
+        sf::Packet packet = make_typed_packet(PacketType::LobbyState);
+        packet << state;
+
+        if (client.socket->send(packet) == sf::Socket::Status::Done)
+            sentAny = true;
+    }
+
+    return sentAny;
+}
+
+std::optional<LobbyStatePacket> NetworkManager::receive_lobby_state()
+{
+    if (m_mode != Mode::Client || !m_connected)
+        return std::nullopt;
+
+    sf::Packet packet;
+    const auto status = m_client_socket.receive(packet);
+
+    if (status != sf::Socket::Status::Done)
+        return std::nullopt;
+
+    const auto type = read_packet_type(packet);
+    if (!type.has_value() || *type != PacketType::LobbyState)
+        return std::nullopt;
+
+    LobbyStatePacket state;
+    packet >> state;
+    return state;
 }
 
 bool NetworkManager::send_world_state_to_player(int player_id, const WorldStatePacket& state)

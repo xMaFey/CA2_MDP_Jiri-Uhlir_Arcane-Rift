@@ -15,7 +15,8 @@ enum class PacketType
     JoinInfo = 1,
     PlayerInput = 2,
     WorldState = 3,
-    TeamChangeRequest = 4
+    TeamChangeRequest = 4,
+    LobbyState = 5
 };
 
 enum class NetTeam
@@ -37,6 +38,31 @@ struct JoinInfoPacket
 struct TeamChangeRequestPacket
 {
     int requested_team = static_cast<int>(NetTeam::Spectator);
+};
+
+struct LobbyPlayerState
+{
+    int id = -1;
+    std::string nickname = "Player";
+    int team = static_cast<int>(NetTeam::Spectator);
+    bool connected = false;
+};
+
+struct LobbyStatePacket
+{
+    int your_player_id = -1; // host tells each client which slot is theirs
+
+    int fire_count = 0;
+    int water_count = 0;
+    int spectator_count = 0;
+
+    bool can_join_fire = true;
+    bool can_join_water = true;
+    bool can_spectate = true;
+
+    bool match_started = false;
+
+    std::vector<LobbyPlayerState> players;
 };
 
 struct PlayerNetState

@@ -34,6 +34,8 @@ public:
     bool send_join_info(const JoinInfoPacket& joinInfo);
     std::optional<JoinInfoPacket> receive_join_info();
 
+    std::optional<LobbyStatePacket> receive_lobby_state();
+
     bool send_input(const PlayerInput& input);
     std::optional<std::pair<int, PlayerInput>> receive_input();
 
@@ -45,6 +47,9 @@ public:
     bool send_world_state_to_player(int player_id, const WorldStatePacket& state);
     bool send_world_state_to_all(const WorldStatePacket& state);
     std::optional<WorldStatePacket> receive_world_state();
+
+    bool send_lobby_state_to_player(int player_id, const LobbyStatePacket& state);
+    bool send_lobby_state_to_all(const LobbyStatePacket& state);
 
     // disconnect tracking
     std::vector<int> consume_disconnected_player_ids();

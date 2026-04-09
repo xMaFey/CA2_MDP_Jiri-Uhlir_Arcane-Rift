@@ -30,6 +30,9 @@ public:
     bool send_world_state_to_player(int player_id, const WorldStatePacket& state);
     bool send_world_state_to_all(const WorldStatePacket& state);
 
+    bool send_lobby_state_to_player(int player_id, const LobbyStatePacket& state);
+    bool send_lobby_state_to_all(const LobbyStatePacket& state);
+
     std::vector<int> consume_disconnected_player_ids();
 
 private:

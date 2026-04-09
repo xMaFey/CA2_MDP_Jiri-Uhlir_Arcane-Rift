@@ -29,6 +29,9 @@ public:
 
     // receive host world state
     std::optional<WorldStatePacket> poll_world_state();
+    
+    // receive host lobby state
+    std::optional<LobbyStatePacket> poll_lobby_state();
 
 private:
     NetworkManager* m_network = nullptr;

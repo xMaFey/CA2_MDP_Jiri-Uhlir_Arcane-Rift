@@ -5,7 +5,7 @@
 
 #include "component.hpp"
 
-gui::Component::Component() : m_is_selected(false), m_is_active(false)
+gui::Component::Component() : m_is_selected(false), m_is_active(false), m_is_enabled(true)
 {
 }
 
@@ -41,4 +41,20 @@ void gui::Component::Activate()
 void gui::Component::Deactivate()
 {
     m_is_active = false;
+}
+
+void gui::Component::SetEnabled(bool enabled)
+{
+    m_is_enabled = enabled;
+
+    if (!m_is_enabled)
+    {
+        m_is_selected = false;
+        m_is_active = false;
+    }
+}
+
+bool gui::Component::IsEnabled() const
+{
+    return m_is_enabled;
 }

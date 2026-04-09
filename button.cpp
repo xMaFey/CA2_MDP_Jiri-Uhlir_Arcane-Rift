@@ -37,7 +37,7 @@ void gui::Button::SetText(const std::string& text)
 
 bool gui::Button::IsSelectable() const
 {
-    return true;
+    return IsEnabled();
 }
 
 void gui::Button::Select()
@@ -54,15 +54,21 @@ void gui::Button::Deselect()
 
 void gui::Button::Activate()
 {
+    if (!IsEnabled())
+        return;
+
     Component::Activate();
+
     if (m_is_toggle)
     {
         m_sprite.setTexture(m_activated_texture);
     }
+
     if (m_callback)
     {
         m_callback();
     }
+
     if (!m_is_toggle)
     {
         Deactivate();
@@ -103,4 +109,19 @@ bool gui::Button::Contains(sf::Vector2f point_in_parent_space) const
 
     // Compare local point against local sprite bounds.
     return m_sprite.getLocalBounds().contains(local);
+}
+
+void gui::Button::SetEnabled(bool enabled)
+{
+    Component::SetEnabled(enabled);
+
+    if (enabled)
+    {
+        m_sprite.setColor(sf::Color::White);
+    }
+    else
+    {
+        // Greyed-out look for disabled lobby buttons.
+        m_sprite.setColor(sf::Color(150, 150, 150, 220));
+    }
 }
