@@ -21,7 +21,7 @@ class Bullet
 public:
     enum class SpellType { Fire, Water };
 
-    Bullet(sf::Vector2f pos, sf::Vector2f dir, int owner_id, SpellType spell);
+    Bullet(int bullet_id, sf::Vector2f pos, sf::Vector2f dir, int owner_id, SpellType spell);
 
     void update(sf::Time dt);
     void draw(sf::RenderTarget& target) const;
@@ -35,10 +35,19 @@ public:
 
     sf::Vector2f direction() const { return m_dir; }
 
+    int bullet_id() const { return m_bullet_id; }
+
+    // Host/client snapshot sync helpers.
+    // Client bullets can be corrected to the latest host snapshot
+    // instead of being destroyed and recreated every packet.
+    void set_position(sf::Vector2f pos);
+    void set_direction(sf::Vector2f dir);
+
 private:
     sf::CircleShape m_shape;
     sf::Vector2f m_velocity;
     int m_owner_id = 0;
+    int m_bullet_id = -1;
     bool m_dead = false;
 
     SpellType m_spell = SpellType::Fire;

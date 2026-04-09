@@ -17,8 +17,10 @@ std::vector<sf::Texture> Bullet::s_fire_frames;
 std::vector<sf::Texture> Bullet::s_water_frames;
 bool Bullet::s_frames_loaded = false;
 
-Bullet::Bullet(sf::Vector2f pos, sf::Vector2f dir, int owner_id, SpellType spell)
-    : m_owner_id(owner_id), m_spell(spell)
+Bullet::Bullet(int bullet_id, sf::Vector2f pos, sf::Vector2f dir, int owner_id, SpellType spell)
+    : m_owner_id(owner_id)
+    , m_bullet_id(bullet_id)
+    , m_spell(spell)
 {
     ensure_shared_frames_loaded();
 
@@ -151,3 +153,37 @@ void Bullet::kill() { m_dead = true; }
 
 int Bullet::owner() const { return m_owner_id; }
 const sf::CircleShape& Bullet::shape() const { return m_shape; }
+
+void Bullet::set_position(sf::Vector2f pos)
+{
+    m_shape.setPosition(pos);
+
+    if (m_sprite)
+    {
+        const float offset = m_visual_forward_offset * m_sprite_scale;
+        const sf::Vector2f visualPos = m_shape.getPosition() + m_dir * offset;
+        m_sprite->setPosition(visualPos);
+    }
+}
+
+void Bullet::set_direction(sf::Vector2f dir)
+{
+    const float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+
+    if (len > 0.f)
+        m_dir = { dir.x / len, dir.y / len };
+    else
+        m_dir = { 1.f, 0.f };
+
+    const float speed = 550.f;
+    m_velocity = m_dir * speed;
+
+    apply_visual_rotation();
+
+    if (m_sprite)
+    {
+        const float offset = m_visual_forward_offset * m_sprite_scale;
+        const sf::Vector2f visualPos = m_shape.getPosition() + m_dir * offset;
+        m_sprite->setPosition(visualPos);
+    }
+}

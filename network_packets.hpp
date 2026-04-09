@@ -51,14 +51,27 @@ struct PlayerNetState
     // Pending team switch info, sent by host so clients can show it in HUD.
     bool has_pending_team_change = false;
     int pending_team = static_cast<int>(NetTeam::Spectator);
+
+    // current visual animation state of this player
+    // 0 = Idle, 1 = Run, 2 = Shoot
+    int anim_state = 0;
 };
 
 struct BulletState
 {
+    int bullet_id = -1; // unique id assigned by the host
+
     sf::Vector2f pos{ 0.f, 0.f };
     sf::Vector2f dir{ 1.f, 0.f };
+
     int owner = 0;      // player id of the bullet owner
     int spell = 0;      // 0 = fire, 1 = water
+};
+
+struct SoundEventState
+{
+    int sound_id = 0;          // matches SoundID enum value
+    int source_player_id = -1; // which player caused the sound
 };
 
 struct WorldStatePacket
@@ -75,4 +88,7 @@ struct WorldStatePacket
     int water_kills = 0;
 
     std::vector<BulletState> bullets;
+
+    // sound events that happened this host frame
+    std::vector<SoundEventState> sound_events;
 };

@@ -13,6 +13,7 @@
 #include <cmath>
 #include <SFML/Network/IpAddress.hpp>
 #include "game_settings.hpp"
+#include "sound_id.hpp"
 
 namespace
 {
@@ -652,6 +653,9 @@ bool GameState::Update(sf::Time dt)
     PlayerInput hostInput{};
     PlayerInput clientInput{};
 
+    // Host collects sound events for this frame and sends them to clients.
+    std::vector<SoundEventState> frame_sound_events;
+
     localPlayer = get_local_player_slot();
 
     // Build local input only for the local player's slot.
@@ -831,6 +835,31 @@ bool GameState::Update(sf::Time dt)
             if (localPlayer && p.id == localPlayer->id)
             {
                 p.entity.update(dt, clientInput, m_walls);
+
+                // Play the local cast sound immediately on this machine.
+                // This makes the client's own shooting feel responsive
+                // instead of waiting for the host snapshot to come back.
+                if (p.entity.consume_shot_event())
+                {
+                    if (p.team == GameSettings::Team::Fire)
+                    {
+                        GetContext().sounds->Play(SoundID::kFireSpell);
+                    }
+                    else if (p.team == GameSettings::Team::Water)
+                    {
+                        GetContext().sounds->Play(SoundID::kWaterSpell);
+                    }
+                }
+            }
+            else
+            {
+                // Remote players on the client do not run gameplay simulation.
+                // They only play the visual animation state chosen by the host.
+                p.entity.apply_network_visual_state(
+                    p.replicated_anim_state,
+                    p.replicated_dir,
+                    dt
+                );
             }
         }
         else
@@ -839,6 +868,15 @@ bool GameState::Update(sf::Time dt)
             if (p.id == 0)
                 p.entity.update(dt, hostInput, m_walls);
         }
+    }
+
+    // Client keeps bullets moving locally between host snapshots.
+    // This makes projectile motion look smoother instead of stepping
+    // only when a new world state packet arrives.
+    if (settings.network_role == GameSettings::NetworkRole::Client)
+    {
+        for (auto& b : m_bullets)
+            b.update(dt);
     }
 
     // host/offline simulates bullets and combat
@@ -856,7 +894,15 @@ bool GameState::Update(sf::Time dt)
             if (p.team == GameSettings::Team::Fire)
             {
                 GetContext().sounds->Play(SoundID::kFireSpell);
+
+                // Tell clients which player caused this sound.
+                frame_sound_events.push_back({
+                    static_cast<int>(SoundID::kFireSpell),
+                    p.id
+                    });
+
                 m_bullets.emplace_back(
+                    m_next_bullet_id++,
                     p.entity.get_projectile_spawn_point(6.f),
                     p.entity.facing_dir(),
                     p.id,
@@ -866,7 +912,15 @@ bool GameState::Update(sf::Time dt)
             else if (p.team == GameSettings::Team::Water)
             {
                 GetContext().sounds->Play(SoundID::kWaterSpell);
+
+                // Tell clients which player caused this sound.
+                frame_sound_events.push_back({
+                    static_cast<int>(SoundID::kWaterSpell),
+                    p.id
+                    });
+
                 m_bullets.emplace_back(
+                    m_next_bullet_id++,
                     p.entity.get_projectile_spawn_point(6.f),
                     p.entity.facing_dir(),
                     p.id,
@@ -929,11 +983,25 @@ bool GameState::Update(sf::Time dt)
                     if (shooter->team == GameSettings::Team::Fire)
                     {
                         GetContext().sounds->Play(SoundID::kFireHit);
+
+                        // Hit sound is also tagged with the player who caused it.
+                        frame_sound_events.push_back({
+                            static_cast<int>(SoundID::kFireHit),
+                            shooter->id
+                            });
+
                         ++m_fire_kills;
                     }
                     else if (shooter->team == GameSettings::Team::Water)
                     {
                         GetContext().sounds->Play(SoundID::kWaterHit);
+
+                        // Hit sound is also tagged with the player who caused it.
+                        frame_sound_events.push_back({
+                            static_cast<int>(SoundID::kWaterHit),
+                            shooter->id
+                            });
+
                         ++m_water_kills;
                     }
 
@@ -1003,9 +1071,12 @@ bool GameState::Update(sf::Time dt)
                 netPlayer.team = encode_team(p.team);
                 netPlayer.connected = p.connected;
 
-                // Send pending team-switch info too, so clients can display it.
+                // Send pending team-switch info too, so clients can display it
                 netPlayer.has_pending_team_change = p.has_pending_team_change;
                 netPlayer.pending_team = encode_team(p.pending_team);
+
+                // tell clients which animation this player is currently using
+                netPlayer.anim_state = p.entity.get_net_anim_state();
 
                 baseState.players.push_back(netPlayer);
             }
@@ -1016,6 +1087,7 @@ bool GameState::Update(sf::Time dt)
                 if (b.is_dead()) continue;
 
                 BulletState bs;
+                bs.bullet_id = b.bullet_id();
                 bs.pos = b.shape().getPosition();
                 bs.dir = b.direction();
                 bs.owner = b.owner();
@@ -1028,6 +1100,9 @@ bool GameState::Update(sf::Time dt)
 
                 baseState.bullets.push_back(bs);
             }
+
+            // Send all sound events that happened during this host frame.
+            baseState.sound_events = frame_sound_events;
 
             // send a personalized world state to each remote player
             for (const auto& p : m_players)
@@ -1095,8 +1170,14 @@ bool GameState::Update(sf::Time dt)
                     localSlot->nickname = netPlayer.nickname;
                     localSlot->team = newTeam;
                     localSlot->connected = netPlayer.connected;
+
+                    // Host is authoritative for remote positions.
                     localSlot->entity.set_position(netPlayer.pos);
                     localSlot->entity.set_facing_dir(netPlayer.dir);
+
+                    // Store replicated animation info from the host.
+                    localSlot->replicated_anim_state = netPlayer.anim_state;
+                    localSlot->replicated_dir = netPlayer.dir;
 
                     // Apply pending switch state from host snapshot too.
                     localSlot->has_pending_team_change = netPlayer.has_pending_team_change;
@@ -1111,15 +1192,87 @@ bool GameState::Update(sf::Time dt)
                     }
                 }
 
-                // rebuilding bullets from host snapshot
-                m_bullets.clear();
+                // Smooth bullet sync:
+// Do NOT destroy and recreate all bullets every packet.
+// Instead, update existing bullets by bullet_id, create only
+// missing ones, and remove bullets that no longer exist on host.
+                std::vector<int> seen_bullet_ids;
+                seen_bullet_ids.reserve(m_latest_world_state->bullets.size());
 
-                for (const auto& b : m_latest_world_state->bullets)
+                for (const auto& netBullet : m_latest_world_state->bullets)
                 {
-                    Bullet::SpellType spell =
-                        (b.spell == 0) ? Bullet::SpellType::Fire : Bullet::SpellType::Water;
+                    seen_bullet_ids.push_back(netBullet.bullet_id);
 
-                    m_bullets.emplace_back(b.pos, b.dir, b.owner, spell);
+                    Bullet* localBullet = nullptr;
+
+                    for (auto& existing : m_bullets)
+                    {
+                        if (existing.bullet_id() == netBullet.bullet_id)
+                        {
+                            localBullet = &existing;
+                            break;
+                        }
+                    }
+
+                    if (localBullet)
+                    {
+                        // Correct the existing bullet to the newest host snapshot.
+                        // We keep the bullet object alive so its animation and motion
+                        // do not restart every packet.
+                        localBullet->set_position(netBullet.pos);
+                        localBullet->set_direction(netBullet.dir);
+                    }
+                    else
+                    {
+                        Bullet::SpellType spell =
+                            (netBullet.spell == 0)
+                            ? Bullet::SpellType::Fire
+                            : Bullet::SpellType::Water;
+
+                        m_bullets.emplace_back(
+                            netBullet.bullet_id,
+                            netBullet.pos,
+                            netBullet.dir,
+                            netBullet.owner,
+                            spell
+                        );
+                    }
+                }
+
+                // Remove bullets that are no longer present in the host snapshot.
+                m_bullets.erase(
+                    std::remove_if(
+                        m_bullets.begin(),
+                        m_bullets.end(),
+                        [&](const Bullet& bullet)
+                        {
+                            return std::find(
+                                seen_bullet_ids.begin(),
+                                seen_bullet_ids.end(),
+                                bullet.bullet_id()
+                            ) == seen_bullet_ids.end();
+                        }
+                    ),
+                    m_bullets.end()
+                );
+
+                // Play sound events that happened on the host this frame.
+                // Ignore our own replicated spell sound because we already
+                // played it immediately when the local cast released.
+                for (const auto& s : m_latest_world_state->sound_events)
+                {
+                    const SoundID sound = static_cast<SoundID>(s.sound_id);
+
+                    const bool isLocalSource =
+                        (m_local_player_id >= 0 && s.source_player_id == m_local_player_id);
+
+                    const bool isSpellSound =
+                        (sound == SoundID::kFireSpell || sound == SoundID::kWaterSpell);
+
+                    if (isLocalSource && isSpellSound)
+                        continue;
+
+                    GetContext().sounds->Play(sound);
                 }
             }
         }

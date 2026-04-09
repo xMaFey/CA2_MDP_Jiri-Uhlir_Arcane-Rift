@@ -40,6 +40,11 @@ private:
         bool dash_prev = false;
         bool connected = false;
 
+        // Latest animation snapshot received from the host.
+        // Used by clients to animate remote players every frame.
+        int replicated_anim_state = 0;
+        sf::Vector2f replicated_dir{ 1.f, 0.f };
+
         // If true, the player has requested a team switch.
         // The host applies it only after this player dies.
         bool has_pending_team_change = false;
@@ -77,6 +82,7 @@ private:
     int m_local_player_id = -1;
 
     std::vector<Bullet> m_bullets;
+    int m_next_bullet_id = 1; // host assigns unique ids to bullets
 
     int m_fire_kills = 0;
     int m_water_kills = 0;

@@ -41,7 +41,8 @@ namespace
             << p.team
             << p.connected
             << p.has_pending_team_change
-            << p.pending_team;
+            << p.pending_team
+            << p.anim_state;
     }
 
     sf::Packet& operator>>(sf::Packet& packet, PlayerNetState& p)
@@ -54,7 +55,18 @@ namespace
             >> p.team
             >> p.connected
             >> p.has_pending_team_change
-            >> p.pending_team;
+            >> p.pending_team
+            >> p.anim_state;
+    }
+
+    sf::Packet& operator<<(sf::Packet& packet, const SoundEventState& s)
+    {
+        return packet << s.sound_id << s.source_player_id;
+    }
+
+    sf::Packet& operator>>(sf::Packet& packet, SoundEventState& s)
+    {
+        return packet >> s.sound_id >> s.source_player_id;
     }
 
     // serializing player input
@@ -72,6 +84,7 @@ namespace
     sf::Packet& operator<<(sf::Packet& packet, const BulletState& b)
     {
         return packet
+            << b.bullet_id
             << b.pos.x << b.pos.y
             << b.dir.x << b.dir.y
             << b.owner
@@ -81,6 +94,7 @@ namespace
     sf::Packet& operator>>(sf::Packet& packet, BulletState& b)
     {
         return packet
+            >> b.bullet_id
             >> b.pos.x >> b.pos.y
             >> b.dir.x >> b.dir.y
             >> b.owner
@@ -106,6 +120,12 @@ namespace
 
         for (const auto& b : state.bullets)
             packet << b;
+
+        // send sound events too
+        packet << static_cast<uint32_t>(state.sound_events.size());
+
+        for (const auto& s : state.sound_events)
+            packet << s;
 
         return packet;
     }
@@ -142,6 +162,20 @@ namespace
             BulletState b;
             packet >> b;
             state.bullets.push_back(b);
+        }
+
+        // receive sound events too
+        uint32_t soundCount = 0;
+        packet >> soundCount;
+
+        state.sound_events.clear();
+        state.sound_events.reserve(soundCount);
+
+        for (uint32_t i = 0; i < soundCount; ++i)
+        {
+            SoundEventState s;
+            packet >> s;
+            state.sound_events.push_back(s);
         }
 
         return packet;

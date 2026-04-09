@@ -36,6 +36,10 @@ public:
     void update(sf::Time dt, const PlayerInput& input, const std::vector<sf::RectangleShape>& walls);
     void draw(sf::RenderTarget& target) const;
 
+    // networking helpers for animation replication
+    int get_net_anim_state() const;
+    void apply_network_visual_state(int animState, sf::Vector2f dir, sf::Time dt);
+
 	// Shooting interface
     bool can_shoot() const;
     sf::Vector2f facing_dir() const;

@@ -434,6 +434,48 @@ sf::Vector2f PlayerEntity::facing_dir() const
     return m_last_dir;
 }
 
+int PlayerEntity::get_net_anim_state() const
+{
+    switch (m_current_anim_state)
+    {
+    case AnimState::Idle:
+        return 0;
+    case AnimState::Run:
+        return 1;
+    case AnimState::Shoot:
+        return 2;
+    }
+
+    return 0;
+}
+
+void PlayerEntity::apply_network_visual_state(int animState, sf::Vector2f dir, sf::Time dt)
+{
+    // Remote players on clients do not run full gameplay simulation.
+    // They only receive the animation state chosen by the host.
+    if (dir.x != 0.f || dir.y != 0.f)
+        m_last_dir = dir;
+
+    const std::string dirFolder = dir_to_folder(m_last_dir);
+
+    AnimState wanted = AnimState::Idle;
+
+    if (animState == 1)
+        wanted = AnimState::Run;
+    else if (animState == 2)
+        wanted = AnimState::Shoot;
+
+    // Only restart animation when state/direction actually changed.
+    if (m_current_anim_state != wanted || m_current_anim_dir != dirFolder)
+        set_anim(wanted, dirFolder);
+
+    // Keep animation frames moving forward every client frame.
+    advance_anim(dt);
+
+    if (m_sprite)
+        m_sprite->setPosition(m_body.getPosition());
+}
+
 bool PlayerEntity::can_shoot() const
 {
     return m_shoot_timer >= m_shoot_cd;
