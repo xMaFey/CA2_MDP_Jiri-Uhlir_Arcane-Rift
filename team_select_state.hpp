@@ -8,6 +8,7 @@
 
 #include "state.hpp"
 #include "container.hpp"
+#include "button.hpp"
 #include <SFML/Graphics/Text.hpp>
 #include <string>
 #include "host_session.hpp"
