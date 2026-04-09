@@ -17,6 +17,8 @@
 
 namespace
 {
+    constexpr int kPendingLocalPlayerId = -100;
+
     // checking if the player is actually in one of the two fighting teams
     bool is_combat_team(GameSettings::Team t)
     {
@@ -158,45 +160,55 @@ GameState::GameState(StateStack& stack, Context context)
 
     PlayerSlot hostSlot;
     hostSlot.id = 0;
-    hostSlot.nickname = (settings.network_role == GameSettings::NetworkRole::Client) ? "Host" : settings.nickname;
+    hostSlot.nickname = (settings.network_role == GameSettings::NetworkRole::Client)
+        ? "Host"
+        : settings.nickname;
     hostSlot.team = GameSettings::Team::Spectator;
     hostSlot.connected = true;
     hostSlot.entity.set_position(spawn_for_player_id(0));
-
-    PlayerSlot clientSlot;
-    clientSlot.id = 1;
-    clientSlot.nickname = "Player";
-    clientSlot.team = GameSettings::Team::Spectator;
-    clientSlot.connected = (settings.network_role == GameSettings::NetworkRole::None);
-    clientSlot.entity.set_position(spawn_for_player_id(1));
 
     if (settings.network_role == GameSettings::NetworkRole::Host)
     {
         // Host always owns player id 0.
         m_local_player_id = 0;
         hostSlot.team = settings.chosen_team;
+
+        m_players.push_back(std::move(hostSlot));
     }
     else if (settings.network_role == GameSettings::NetworkRole::Client)
     {
-        // Do not assume the client will really be id 1.
-        // The host will send the real id later in WorldStatePacket.
+        // Client does not know its real player id yet.
+        // Use a special temporary negative id so it can never collide
+        // with a real host-assigned network player id.
         m_local_player_id = -1;
 
-        // Temporary local setup until the first world state arrives.
-        clientSlot.nickname = settings.nickname;
-        clientSlot.team = settings.chosen_team;
-        clientSlot.connected = true;
+        m_players.push_back(std::move(hostSlot));
+
+        PlayerSlot pendingLocalSlot;
+        pendingLocalSlot.id = kPendingLocalPlayerId;
+        pendingLocalSlot.nickname = settings.nickname;
+        pendingLocalSlot.team = settings.chosen_team;
+        pendingLocalSlot.connected = true;
+        pendingLocalSlot.entity.set_position(spawn_for_player_id(1));
+
+        m_players.push_back(std::move(pendingLocalSlot));
     }
     else
     {
-        // Offline fallback
+        // Offline fallback keeps two local slots.
         m_local_player_id = 0;
         hostSlot.team = GameSettings::Team::Fire;
-        clientSlot.team = GameSettings::Team::Water;
-    }
 
-    m_players.push_back(std::move(hostSlot));
-    m_players.push_back(std::move(clientSlot));
+        PlayerSlot offlineSecondSlot;
+        offlineSecondSlot.id = 1;
+        offlineSecondSlot.nickname = "Player";
+        offlineSecondSlot.team = GameSettings::Team::Water;
+        offlineSecondSlot.connected = true;
+        offlineSecondSlot.entity.set_position(spawn_for_player_id(1));
+
+        m_players.push_back(std::move(hostSlot));
+        m_players.push_back(std::move(offlineSecondSlot));
+    }
 
     // Apply visuals only after the player slots are already stored inside m_players.
     // This avoids creating sprites that reference textures before the PlayerEntity gets moved.
@@ -378,7 +390,7 @@ GameState::PlayerSlot* GameState::get_local_player_slot()
         if (m_local_player_id >= 0)
             return find_player(m_local_player_id);
 
-        return find_player(1); // temporary slot before host sends the real id
+        return find_player(kPendingLocalPlayerId); // temporary slot before host sends the real id
     }
 
     return find_player(0);
@@ -1138,11 +1150,12 @@ bool GameState::Update(sf::Time dt)
                 {
                     const int assignedId = m_latest_world_state->your_player_id;
 
-                    // If the host gave us a different id than the temporary slot,
-                    // disable the temporary slot so we do not keep a fake duplicate.
-                    if (m_local_player_id < 0 && assignedId != 1)
+                    // Once the host tells us our real id, disable the temporary
+                    // local placeholder slot so it can never conflict with the
+                    // real replicated player entry.
+                    if (m_local_player_id < 0)
                     {
-                        if (PlayerSlot* tempSlot = find_player(1))
+                        if (PlayerSlot* tempSlot = find_player(kPendingLocalPlayerId))
                         {
                             tempSlot->connected = false;
                             tempSlot->team = GameSettings::Team::Spectator;
@@ -1296,7 +1309,7 @@ bool GameState::Update(sf::Time dt)
         if (m_local_player_id >= 0)
             hudLocalPlayer = find_player(m_local_player_id);
         else
-            hudLocalPlayer = find_player(1); // temporary local slot before real id arrives
+            hudLocalPlayer = find_player(kPendingLocalPlayerId); // temporary local slot before real id arrives
     }
     else
     {
