@@ -61,8 +61,11 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
 
             if (settings.network_role == GameSettings::NetworkRole::Host)
             {
-                settings.chosen_team = GameSettings::Team::Fire;
-                refresh_text();
+                if (can_join_fire_locally())
+                {
+                    settings.chosen_team = GameSettings::Team::Fire;
+                    refresh_text();
+                }
                 return;
             }
 
@@ -89,8 +92,11 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
 
             if (settings.network_role == GameSettings::NetworkRole::Host)
             {
-                settings.chosen_team = GameSettings::Team::Water;
-                refresh_text();
+                if (can_join_water_locally())
+                {
+                    settings.chosen_team = GameSettings::Team::Water;
+                    refresh_text();
+                }
                 return;
             }
 
