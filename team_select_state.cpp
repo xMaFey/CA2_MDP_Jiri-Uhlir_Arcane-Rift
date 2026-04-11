@@ -470,16 +470,18 @@ bool TeamSelectState::Update(sf::Time)
             if (!m_latest_lobby_state.has_value())
                 continue;
 
-            int fireCount = (settings.chosen_team == GameSettings::Team::Fire) ? 1 : 0;
-            int waterCount = (settings.chosen_team == GameSettings::Team::Water) ? 1 : 0;
+            int fireCount = 0;
+            int waterCount = 0;
 
             for (const auto& p : m_latest_lobby_state->players)
             {
                 if (!p.connected || p.id == request->first)
                     continue;
 
-                if (p.team == static_cast<int>(NetTeam::Fire)) ++fireCount;
-                else if (p.team == static_cast<int>(NetTeam::Water)) ++waterCount;
+                if (p.team == static_cast<int>(NetTeam::Fire))
+                    ++fireCount;
+                else if (p.team == static_cast<int>(NetTeam::Water))
+                    ++waterCount;
             }
 
             std::cout << "Host got team request from player " << request->first
