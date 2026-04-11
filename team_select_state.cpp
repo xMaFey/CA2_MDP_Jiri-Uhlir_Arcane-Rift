@@ -3,18 +3,18 @@
 // Student ID: D00260335
 // ============================================
 
-
 #include "team_select_state.hpp"
 #include "fontID.hpp"
 #include "utility.hpp"
 #include "button.hpp"
 #include "stateid.hpp"
 #include <SFML/Network/IpAddress.hpp>
+#include <iostream>
 
 TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     : State(stack, context)
     , m_title(context.fonts->Get(FontID::kMain))
-	, m_mode_text(context.fonts->Get(FontID::kMain))
+    , m_mode_text(context.fonts->Get(FontID::kMain))
     , m_name_text(context.fonts->Get(FontID::kMain))
     , m_fire_text(context.fonts->Get(FontID::kMain))
     , m_water_text(context.fonts->Get(FontID::kMain))
@@ -59,19 +59,16 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
             settings.chosen_team = GameSettings::Team::Fire;
 
             GetContext().sounds->Play(SoundID::kButton);
+            refresh_text();
 
-			refresh_text();
-
-            // Host changes immediately in lobby.
-            if (settings.network_role == GameSettings::NetworkRole::Host)
-            {
-                //refresh_text();
-            }
-            else if (settings.network_role == GameSettings::NetworkRole::Client && m_client_session)
+            if (settings.network_role == GameSettings::NetworkRole::Client && m_client_session)
             {
                 TeamChangeRequestPacket request;
                 request.requested_team = static_cast<int>(NetTeam::Fire);
-                m_client_session->send_team_change_request(request);
+
+                const bool ok = m_client_session->send_team_change_request(request);
+                std::cout << "Client team change request sent (Fire): "
+                    << (ok ? "YES" : "NO") << "\n";
             }
         });
 
@@ -85,14 +82,16 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
             settings.chosen_team = GameSettings::Team::Water;
 
             GetContext().sounds->Play(SoundID::kButton);
-
             refresh_text();
 
             if (settings.network_role == GameSettings::NetworkRole::Client && m_client_session)
             {
                 TeamChangeRequestPacket request;
                 request.requested_team = static_cast<int>(NetTeam::Water);
-                m_client_session->send_team_change_request(request);
+
+                const bool ok = m_client_session->send_team_change_request(request);
+                std::cout << "Client team change request sent (Water): "
+                    << (ok ? "YES" : "NO") << "\n";
             }
         });
 
@@ -106,14 +105,16 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
             settings.chosen_team = GameSettings::Team::Spectator;
 
             GetContext().sounds->Play(SoundID::kButton);
-
             refresh_text();
 
             if (settings.network_role == GameSettings::NetworkRole::Client && m_client_session)
             {
                 TeamChangeRequestPacket request;
                 request.requested_team = static_cast<int>(NetTeam::Spectator);
-                m_client_session->send_team_change_request(request);
+
+                const bool ok = m_client_session->send_team_change_request(request);
+                std::cout << "Client team change request sent (Spectator): "
+                    << (ok ? "YES" : "NO") << "\n";
             }
         });
 
@@ -168,8 +169,6 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     m_gui.Pack(back);
 
     refresh_text();
-
-
 
     auto& settings = *GetContext().settings;
     auto& network = *GetContext().network;
@@ -305,7 +304,7 @@ void TeamSelectState::Draw(sf::RenderTarget& target)
     target.draw(overlay);
 
     target.draw(m_title);
-	target.draw(m_mode_text);
+    target.draw(m_mode_text);
     target.draw(m_name_text);
     target.draw(m_fire_text);
     target.draw(m_water_text);
@@ -318,11 +317,6 @@ bool TeamSelectState::Update(sf::Time)
 {
     auto& settings = *GetContext().settings;
 
-    // Host lobby:
-    // - accepts joins
-    // - processes team changes
-    // - updates counts
-    // - broadcasts live lobby state
     if (settings.network_role == GameSettings::NetworkRole::Host && m_host_session)
     {
         while (true)
@@ -331,18 +325,12 @@ bool TeamSelectState::Update(sf::Time)
             if (!joinInfo.has_value())
                 break;
 
-            // Count the host's currently selected team too.
             int fireCount = 0;
             int waterCount = 0;
 
             if (settings.chosen_team == GameSettings::Team::Fire) ++fireCount;
             if (settings.chosen_team == GameSettings::Team::Water) ++waterCount;
 
-            // Count already-joined remote players from the latest lobby state.
-            // If this JoinInfo is just a resend from an already-known player
-            // (for example nickname update), do NOT count that same player here.
-            // Otherwise the player can fail validation against their own current team
-            // and get incorrectly pushed to Spectator.
             if (m_latest_lobby_state.has_value())
             {
                 for (const auto& p : m_latest_lobby_state->players)
@@ -350,7 +338,6 @@ bool TeamSelectState::Update(sf::Time)
                     if (!p.connected || p.id == 0)
                         continue;
 
-                    // Exclude the player whose JoinInfo we are currently processing.
                     if (p.id == joinInfo->player_id)
                         continue;
 
@@ -359,10 +346,10 @@ bool TeamSelectState::Update(sf::Time)
                 }
             }
 
-            const GameSettings::Team requested = static_cast<GameSettings::Team>(
-                joinInfo->team == static_cast<int>(NetTeam::Fire) ? static_cast<int>(GameSettings::Team::Fire) :
-                joinInfo->team == static_cast<int>(NetTeam::Water) ? static_cast<int>(GameSettings::Team::Water) :
-                static_cast<int>(GameSettings::Team::Spectator));
+            const GameSettings::Team requested =
+                (joinInfo->team == static_cast<int>(NetTeam::Fire)) ? GameSettings::Team::Fire :
+                (joinInfo->team == static_cast<int>(NetTeam::Water)) ? GameSettings::Team::Water :
+                GameSettings::Team::Spectator;
 
             GameSettings::Team finalTeam = GameSettings::Team::Spectator;
 
@@ -414,7 +401,6 @@ bool TeamSelectState::Update(sf::Time)
             if (!m_latest_lobby_state.has_value())
                 continue;
 
-            // Recompute counts excluding the requester.
             int fireCount = (settings.chosen_team == GameSettings::Team::Fire) ? 1 : 0;
             int waterCount = (settings.chosen_team == GameSettings::Team::Water) ? 1 : 0;
 
@@ -427,11 +413,17 @@ bool TeamSelectState::Update(sf::Time)
                 else if (p.team == static_cast<int>(NetTeam::Water)) ++waterCount;
             }
 
+            std::cout << "Host got team request from player " << request->first
+                << " requested=" << request->second.requested_team
+                << " fireCount(excluding requester)=" << fireCount
+                << " waterCount(excluding requester)=" << waterCount << "\n";
+
             for (auto& p : m_latest_lobby_state->players)
             {
                 if (p.id != request->first)
                     continue;
 
+                const int oldTeam = p.team;
                 const int requestedTeam = request->second.requested_team;
 
                 if (requestedTeam == static_cast<int>(NetTeam::Spectator))
@@ -449,6 +441,8 @@ bool TeamSelectState::Update(sf::Time)
                         p.team = static_cast<int>(NetTeam::Water);
                 }
 
+                std::cout << "Host applied team change? old=" << oldTeam
+                    << " new=" << p.team << "\n";
                 break;
             }
         }
@@ -471,7 +465,6 @@ bool TeamSelectState::Update(sf::Time)
         if (!m_latest_lobby_state.has_value())
             m_latest_lobby_state = LobbyStatePacket{};
 
-        // Host is always player 0 in the lobby view.
         bool hostFound = false;
         for (auto& p : m_latest_lobby_state->players)
         {
@@ -530,7 +523,6 @@ bool TeamSelectState::Update(sf::Time)
 
         refresh_text();
 
-        // Send a personalized lobby packet to each remote client.
         for (const auto& p : m_latest_lobby_state->players)
         {
             if (!p.connected || p.id == 0)
@@ -543,11 +535,10 @@ bool TeamSelectState::Update(sf::Time)
     }
     else if (settings.network_role == GameSettings::NetworkRole::Client && m_client_session)
     {
-        // Send the join packet once after the client connected to the lobby.
         if (m_network_started && !m_join_sent)
         {
             JoinInfoPacket joinInfo;
-            joinInfo.player_id = -1; // host keeps the same real id for this socket
+            joinInfo.player_id = -1;
             joinInfo.nickname = m_nickname;
 
             if (settings.chosen_team == GameSettings::Team::Fire)
@@ -578,8 +569,6 @@ bool TeamSelectState::Update(sf::Time)
             settings.latest_water_count = m_latest_lobby_state->water_count;
             settings.latest_spectator_count = m_latest_lobby_state->spectator_count;
 
-            // Sync the client's chosen_team to the host-approved lobby team.
-            // Button clicks are only requests. The host is authoritative.
             for (const auto& p : m_latest_lobby_state->players)
             {
                 if (!p.connected)
@@ -629,15 +618,13 @@ bool TeamSelectState::HandleEvent(const sf::Event& event)
             GetContext().settings->nickname = m_nickname;
             refresh_text();
 
-            // If the client is already connected to the lobby, resend JoinInfo
-            // so the host updates the nickname in real time.
             auto& settings = *GetContext().settings;
             if (settings.network_role == GameSettings::NetworkRole::Client &&
                 m_client_session &&
                 m_network_started)
             {
                 JoinInfoPacket joinInfo;
-                joinInfo.player_id = -1; // host keeps the same real id for this socket
+                joinInfo.player_id = -1;
                 joinInfo.nickname = m_nickname;
 
                 if (settings.chosen_team == GameSettings::Team::Fire)
@@ -670,8 +657,6 @@ bool TeamSelectState::HandleEvent(const sf::Event& event)
                 joinInfo.player_id = -1;
                 joinInfo.nickname = m_nickname;
 
-                // Keep the client's currently selected team while updating nickname.
-                // Backspace should only edit the name, not silently switch to Spectator.
                 if (settings.chosen_team == GameSettings::Team::Fire)
                     joinInfo.team = static_cast<int>(NetTeam::Fire);
                 else if (settings.chosen_team == GameSettings::Team::Water)
@@ -694,7 +679,6 @@ bool TeamSelectState::HandleEvent(const sf::Event& event)
 
     auto& settings = *GetContext().settings;
 
-    // Host changes their own lobby team immediately.
     if (settings.network_role == GameSettings::NetworkRole::Host)
     {
         if (const auto* key = event.getIf<sf::Event::KeyPressed>())
