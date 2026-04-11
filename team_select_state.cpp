@@ -56,10 +56,15 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
         {
             auto& settings = *GetContext().settings;
             settings.nickname = m_nickname;
-            settings.chosen_team = GameSettings::Team::Fire;
 
             GetContext().sounds->Play(SoundID::kButton);
-            refresh_text();
+
+            if (settings.network_role == GameSettings::NetworkRole::Host)
+            {
+                settings.chosen_team = GameSettings::Team::Fire;
+                refresh_text();
+                return;
+            }
 
             if (settings.network_role == GameSettings::NetworkRole::Client && m_client_session)
             {
@@ -79,10 +84,15 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
         {
             auto& settings = *GetContext().settings;
             settings.nickname = m_nickname;
-            settings.chosen_team = GameSettings::Team::Water;
 
             GetContext().sounds->Play(SoundID::kButton);
-            refresh_text();
+
+            if (settings.network_role == GameSettings::NetworkRole::Host)
+            {
+                settings.chosen_team = GameSettings::Team::Water;
+                refresh_text();
+                return;
+            }
 
             if (settings.network_role == GameSettings::NetworkRole::Client && m_client_session)
             {
@@ -102,10 +112,15 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
         {
             auto& settings = *GetContext().settings;
             settings.nickname = m_nickname;
-            settings.chosen_team = GameSettings::Team::Spectator;
 
             GetContext().sounds->Play(SoundID::kButton);
-            refresh_text();
+
+            if (settings.network_role == GameSettings::NetworkRole::Host)
+            {
+                settings.chosen_team = GameSettings::Team::Spectator;
+                refresh_text();
+                return;
+            }
 
             if (settings.network_role == GameSettings::NetworkRole::Client && m_client_session)
             {
@@ -213,18 +228,66 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
 
 bool TeamSelectState::can_join_fire_locally() const
 {
-    if (m_latest_lobby_state.has_value())
-        return m_latest_lobby_state->can_join_fire;
+    if (!m_latest_lobby_state.has_value())
+        return m_fire_count < m_team_limit && m_fire_count <= m_water_count;
 
-    return m_fire_count < m_team_limit && m_fire_count <= m_water_count;
+    int fireCount = 0;
+    int waterCount = 0;
+    int myTeam = static_cast<int>(NetTeam::Spectator);
+
+    for (const auto& p : m_latest_lobby_state->players)
+    {
+        if (!p.connected)
+            continue;
+
+        if (p.id == m_local_player_id)
+        {
+            myTeam = p.team;
+            continue;
+        }
+
+        if (p.team == static_cast<int>(NetTeam::Fire))
+            ++fireCount;
+        else if (p.team == static_cast<int>(NetTeam::Water))
+            ++waterCount;
+    }
+
+    if (myTeam == static_cast<int>(NetTeam::Fire))
+        return false;
+
+    return fireCount < m_team_limit && fireCount <= waterCount;
 }
 
 bool TeamSelectState::can_join_water_locally() const
 {
-    if (m_latest_lobby_state.has_value())
-        return m_latest_lobby_state->can_join_water;
+    if (!m_latest_lobby_state.has_value())
+        return m_water_count < m_team_limit && m_water_count <= m_fire_count;
 
-    return m_water_count < m_team_limit && m_water_count <= m_fire_count;
+    int fireCount = 0;
+    int waterCount = 0;
+    int myTeam = static_cast<int>(NetTeam::Spectator);
+
+    for (const auto& p : m_latest_lobby_state->players)
+    {
+        if (!p.connected)
+            continue;
+
+        if (p.id == m_local_player_id)
+        {
+            myTeam = p.team;
+            continue;
+        }
+
+        if (p.team == static_cast<int>(NetTeam::Fire))
+            ++fireCount;
+        else if (p.team == static_cast<int>(NetTeam::Water))
+            ++waterCount;
+    }
+
+    if (myTeam == static_cast<int>(NetTeam::Water))
+        return false;
+
+    return waterCount < m_team_limit && waterCount <= fireCount;
 }
 
 void TeamSelectState::update_button_states()
@@ -674,30 +737,6 @@ bool TeamSelectState::HandleEvent(const sf::Event& event)
                 GetContext().network->disconnect();
 
             RequestStackPop();
-        }
-    }
-
-    auto& settings = *GetContext().settings;
-
-    if (settings.network_role == GameSettings::NetworkRole::Host)
-    {
-        if (const auto* key = event.getIf<sf::Event::KeyPressed>())
-        {
-            if (key->scancode == sf::Keyboard::Scancode::Num1 && can_join_fire_locally())
-            {
-                settings.chosen_team = GameSettings::Team::Fire;
-                refresh_text();
-            }
-            else if (key->scancode == sf::Keyboard::Scancode::Num2 && can_join_water_locally())
-            {
-                settings.chosen_team = GameSettings::Team::Water;
-                refresh_text();
-            }
-            else if (key->scancode == sf::Keyboard::Scancode::Num3)
-            {
-                settings.chosen_team = GameSettings::Team::Spectator;
-                refresh_text();
-            }
         }
     }
 
