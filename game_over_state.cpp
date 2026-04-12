@@ -11,8 +11,14 @@
 
 GameOverState::GameOverState(StateStack& stack, Context context)
     : State(stack, context)
-    , m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
-	, m_overlay()
+    , m_background_sprite(
+        context.textures->Get(
+            context.settings->last_winner_team == GameSettings::Team::Water
+            ? TextureID::kBluePlayerWin
+            : TextureID::kOrangePlayerWin
+        )
+    )
+    , m_overlay()
     , m_title(context.fonts->Get(FontID::kMain))
     , m_hint(context.fonts->Get(FontID::kMain))
     , m_gui()
@@ -43,11 +49,16 @@ GameOverState::GameOverState(StateStack& stack, Context context)
     m_title.setFillColor(sf::Color::White);
     m_title.setOutlineThickness(3.f);
     m_title.setOutlineColor(sf::Color::Black);
-    
 
-	Utility::CentreOrigin(m_title);
-	m_title.setPosition({ view_size.x / 2.f, view_size.y / 3.f });
-    m_title.setString("Match Over");
+    if (context.settings->last_winner_team == GameSettings::Team::Water)
+        m_title.setString("Water Team Wins!");
+    else if (context.settings->last_winner_team == GameSettings::Team::Fire)
+        m_title.setString("Fire Team Wins!");
+    else
+        m_title.setString("Match Over");
+
+    Utility::CentreOrigin(m_title);
+    m_title.setPosition({ view_size.x / 2.f, view_size.y / 3.f });
 
 	m_hint.setString("Press Enter to play again, or Escape for menu");
 	m_hint.setCharacterSize(24);

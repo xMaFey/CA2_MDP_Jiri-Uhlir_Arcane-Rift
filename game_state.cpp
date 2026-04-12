@@ -1671,6 +1671,11 @@ bool GameState::Update(sf::Time dt)
     // win condition
     if (m_fire_kills >= m_kills_to_win || m_water_kills >= m_kills_to_win)
     {
+        if (m_fire_kills >= m_kills_to_win)
+            settings.last_winner_team = GameSettings::Team::Fire;
+        else
+            settings.last_winner_team = GameSettings::Team::Water;
+
         RequestStackClear();
         RequestStackPush(StateID::kGameOver);
         return false;

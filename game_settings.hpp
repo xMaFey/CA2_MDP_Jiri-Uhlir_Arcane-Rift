@@ -48,6 +48,8 @@ struct GameSettings
     int latest_water_count = 0;
     int latest_spectator_count = 0;
     int team_limit = 10;
+
+    Team last_winner_team = Team::Spectator;
 };
 
 

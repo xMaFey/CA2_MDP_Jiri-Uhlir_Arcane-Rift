@@ -59,8 +59,8 @@ Application::Application()
 	m_textures.Load(TextureID::kButtonNormal, "Media/Textures/ButtonNormal.png");
 	m_textures.Load(TextureID::kButtonSelected, "Media/Textures/ButtonSelected.png");
 	m_textures.Load(TextureID::kButtonActivated, "Media/Textures/ButtonPressed.png");
-	//m_textures.Load(TextureID::kBluePlayerWin, "Media/Textures/BluePlayerWin.png");
-	//m_textures.Load(TextureID::kOrangePlayerWin, "Media/Textures/OrangePlayerWin.png");
+	m_textures.Load(TextureID::kBluePlayerWin, "Media/Textures/BluePlayerWin.png");
+	m_textures.Load(TextureID::kOrangePlayerWin, "Media/Textures/OrangePlayerWin.png");
 
 	m_sounds.Load(SoundID::kButton, "Media/Audio/sfx/button.wav");
 	m_sounds.Load(SoundID::kDash, "Media/Audio/sfx/dash.wav");
