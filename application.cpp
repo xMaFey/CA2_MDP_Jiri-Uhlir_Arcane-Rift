@@ -16,7 +16,7 @@
 #include <iostream>
 
 Application::Application()
-	: m_window(sf::VideoMode({ 1280, 720 }), "States", sf::Style::Close)
+	: m_window(sf::VideoMode({ 1600, 900 }), "Arcane Rift", sf::Style::Default)
 	, m_textures()
 	, m_fonts()
 	, m_sounds()
@@ -113,13 +113,23 @@ void Application::ProcessInput()
 {
 	while (const std::optional event = m_window.pollEvent())
 	{
-		m_stack.HandleEvent(*event);
-
 		if (event->is<sf::Event::Closed>())
 		{
 			m_window.close();
+			continue;
 		}
 
+		// Keep render texture, shader resolution and default view
+		// in sync with the real window size.
+		if (const auto* resized = event->getIf<sf::Event::Resized>())
+		{
+			HandleResize({
+				static_cast<unsigned int>(resized->size.x),
+				static_cast<unsigned int>(resized->size.y)
+				});
+		}
+
+		m_stack.HandleEvent(*event);
 	}
 }
 
@@ -132,7 +142,7 @@ void Application::Render()
 {
 	// draw state stack into offscreen texture
 	m_scene_texture.clear();
-	m_scene_texture.setView(m_window.getView());
+	m_scene_texture.setView(m_scene_texture.getDefaultView());
 	m_stack.Draw(m_scene_texture);
 	m_scene_texture.display();
 
@@ -152,6 +162,32 @@ void Application::Render()
 	/*m_window.clear();
 	m_stack.Draw();
 	m_window.display();*/
+}
+
+void Application::HandleResize(sf::Vector2u new_size)
+{
+	if (!m_scene_texture.resize(new_size))
+	{
+		std::cout << "Failed to resize scene texture\n";
+		return;
+	}
+
+	m_scene_sprite.setTexture(m_scene_texture.getTexture(), true);
+	m_scene_texture.setView(m_scene_texture.getDefaultView());
+
+	sf::View view(sf::FloatRect({ 0.f, 0.f }, { static_cast<float>(new_size.x), static_cast<float>(new_size.y) }));
+	m_window.setView(view);
+
+	if (m_vignette_ok)
+	{
+		m_vignette_shader.setUniform(
+			"resolution",
+			sf::Glsl::Vec2(static_cast<float>(new_size.x), static_cast<float>(new_size.y))
+		);
+	}
+
+	// Tell all active states to rebuild their UI/layout.
+	m_stack.OnResize(new_size);
 }
 
 void Application::RegisterStates()

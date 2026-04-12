@@ -13,7 +13,10 @@ SettingsState::SettingsState(StateStack& stack, Context context)
 	, m_controls_text(context.fonts->Get(FontID::kMain))
     , m_hint(context.fonts->Get(FontID::kMain))
 {
-    sf::Vector2f view_size = context.window->getView().getSize();
+    sf::Vector2f view_size(
+        static_cast<float>(context.window->getSize().x),
+        static_cast<float>(context.window->getSize().y)
+    );
 
     m_title.setString("Settings");
     m_title.setCharacterSize(48);
@@ -30,10 +33,10 @@ SettingsState::SettingsState(StateStack& stack, Context context)
     m_hint.setPosition({ view_size.x * 0.5f, view_size.y * 0.72f });
 
 	//toggle controls button
-    auto toggle_controls = std::make_shared<gui::Button>(*context.fonts, *context.textures);
-    toggle_controls->SetText("Toggle Controls");
-    toggle_controls->setPosition({ view_size.x * 0.5f - 100.f, view_size.y * 0.55f });
-    toggle_controls->SetCallback([this]()
+    m_toggle_controls_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+    m_toggle_controls_button->SetText("Toggle Controls");
+    m_toggle_controls_button->setPosition({ view_size.x * 0.5f - 100.f, view_size.y * 0.55f });
+    m_toggle_controls_button->SetCallback([this]()
         {
             auto& s = *GetContext().settings;
 
@@ -69,19 +72,21 @@ SettingsState::SettingsState(StateStack& stack, Context context)
         });
 
     // back button
-    auto back = std::make_shared<gui::Button>(*context.fonts, *context.textures);
-    back->SetText("Back");
-    back->SetCallback([this]()
+    m_back_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+    m_back_button->SetText("Back");
+    m_back_button->SetCallback([this]()
         {
             GetContext().sounds->Play(SoundID::kButton);
             RequestStackPop();
         });
-    back->setPosition({ view_size.x * 0.5f - 100.f, view_size.y * 0.82f });
+    m_back_button->setPosition({ view_size.x * 0.5f - 100.f, view_size.y * 0.82f });
 
-	m_gui.Pack(toggle_controls);
-    m_gui.Pack(back);
+    m_gui.Pack(m_toggle_controls_button);
+    m_gui.Pack(m_back_button);
 
 	refresh_text();
+
+    rebuild_layout(context.window->getSize());
 }
 
 void SettingsState::refresh_text()
@@ -106,11 +111,10 @@ void SettingsState::refresh_text()
 
 void SettingsState::Draw(sf::RenderTarget& target)
 {
-    sf::RenderWindow& window = *GetContext().window;
-    window.setView(window.getDefaultView());
+    target.setView(target.getDefaultView());
 
     sf::RectangleShape overlay;
-    overlay.setSize(GetContext().window->getView().getSize());
+    overlay.setSize(target.getView().getSize());
     overlay.setFillColor(sf::Color(0, 0, 0, 140));
     target.draw(overlay);
 
@@ -141,4 +145,24 @@ bool SettingsState::HandleEvent(const sf::Event& event)
     }
 
     return false;
+}
+
+void SettingsState::rebuild_layout(sf::Vector2u new_size)
+{
+    const sf::Vector2f view_size(static_cast<float>(new_size.x), static_cast<float>(new_size.y));
+
+    m_title.setPosition({ view_size.x * 0.5f, view_size.y * 0.35f });
+    m_controls_text.setPosition({ view_size.x * 0.5f, view_size.y * 0.42f });
+    m_hint.setPosition({ view_size.x * 0.5f, view_size.y * 0.72f });
+
+    if (m_toggle_controls_button)
+        m_toggle_controls_button->setPosition({ view_size.x * 0.5f - 100.f, view_size.y * 0.55f });
+
+    if (m_back_button)
+        m_back_button->setPosition({ view_size.x * 0.5f - 100.f, view_size.y * 0.82f });
+}
+
+void SettingsState::OnResize(sf::Vector2u new_size)
+{
+    rebuild_layout(new_size);
 }

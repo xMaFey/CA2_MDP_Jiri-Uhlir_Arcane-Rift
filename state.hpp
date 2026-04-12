@@ -44,6 +44,7 @@ public:
 	virtual void Draw(sf::RenderTarget& target) = 0;
 	virtual bool Update(sf::Time dt) = 0;
 	virtual bool HandleEvent(const sf::Event& event) = 0;
+	virtual void OnResize(sf::Vector2u new_size) {}
 
 protected:
 	void RequestStackPush(StateID state_id);

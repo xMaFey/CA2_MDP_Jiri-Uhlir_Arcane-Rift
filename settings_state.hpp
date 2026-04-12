@@ -19,6 +19,9 @@ public:
     bool Update(sf::Time dt) override;
     bool HandleEvent(const sf::Event& event) override;
 
+    void OnResize(sf::Vector2u new_size) override;
+    void rebuild_layout(sf::Vector2u new_size);
+
 private:
     void refresh_text();
 
@@ -28,4 +31,7 @@ private:
     sf::Text m_hint;
 
 	gui::Container m_gui;
+
+    gui::Button::Ptr m_toggle_controls_button;
+    gui::Button::Ptr m_back_button;
 };

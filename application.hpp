@@ -29,6 +29,7 @@ private:
 	void Update(sf::Time dt);
 	void Render();
 	void RegisterStates();
+	void HandleResize(sf::Vector2u new_size);
 
 private:
 	sf::RenderWindow m_window;

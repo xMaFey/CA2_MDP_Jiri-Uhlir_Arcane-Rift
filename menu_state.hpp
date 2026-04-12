@@ -16,6 +16,8 @@ public:
 	virtual bool Update(sf::Time dt) override;
 	virtual bool HandleEvent(const sf::Event& event) override;
 	void UpdateOptionText();
+	void OnResize(sf::Vector2u new_size) override;
+	void rebuild_layout(sf::Vector2u new_size);
 
 private:
 	sf::Sprite m_background_sprite;

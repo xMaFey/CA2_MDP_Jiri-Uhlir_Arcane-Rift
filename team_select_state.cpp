@@ -21,7 +21,13 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     , m_hint(context.fonts->Get(FontID::kMain))
     , m_players_text(context.fonts->Get(FontID::kMain))
 {
-    sf::Vector2f view_size = context.window->getView().getSize();
+    auto& settings = *GetContext().settings;
+    m_nickname = settings.nickname;
+
+    sf::Vector2f view_size(
+        static_cast<float>(context.window->getSize().x),
+        static_cast<float>(context.window->getSize().y)
+    );
 
     m_title.setString("Team Select");
     m_title.setCharacterSize(48);
@@ -170,10 +176,10 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
             RequestStackPush(StateID::kGame);
         });
 
-    auto back = std::make_shared<gui::Button>(*context.fonts, *context.textures);
-    back->SetText("Back");
-    back->setPosition({ view_size.x * 0.72f, view_size.y * 0.80f });
-    back->SetCallback([this]()
+    m_back_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+    m_back_button->SetText("Back");
+    m_back_button->setPosition({ view_size.x * 0.72f, view_size.y * 0.80f });
+    m_back_button->SetCallback([this]()
         {
             GetContext().sounds->Play(SoundID::kButton);
 
@@ -187,11 +193,10 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     m_gui.Pack(m_join_water_button);
     m_gui.Pack(m_spectate_button);
     m_gui.Pack(m_start_button);
-    m_gui.Pack(back);
+    m_gui.Pack(m_back_button);
 
     refresh_text();
 
-    auto& settings = *GetContext().settings;
     auto& network = *GetContext().network;
 
     if (settings.network_role == GameSettings::NetworkRole::Host)
@@ -230,6 +235,8 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     }
 
     update_button_states();
+
+    rebuild_layout(context.window->getSize());
 }
 
 bool TeamSelectState::can_join_fire_locally() const
@@ -364,11 +371,10 @@ void TeamSelectState::refresh_text()
 
 void TeamSelectState::Draw(sf::RenderTarget& target)
 {
-    sf::RenderWindow& window = *GetContext().window;
-    window.setView(window.getDefaultView());
+    target.setView(target.getDefaultView());
 
     sf::RectangleShape overlay;
-    overlay.setSize(GetContext().window->getView().getSize());
+    overlay.setSize(target.getView().getSize());
     overlay.setFillColor(sf::Color(0, 0, 0, 140));
     target.draw(overlay);
 
@@ -397,21 +403,17 @@ bool TeamSelectState::Update(sf::Time)
             int fireCount = 0;
             int waterCount = 0;
 
-            if (settings.chosen_team == GameSettings::Team::Fire) ++fireCount;
-            if (settings.chosen_team == GameSettings::Team::Water) ++waterCount;
-
             if (m_latest_lobby_state.has_value())
             {
                 for (const auto& p : m_latest_lobby_state->players)
                 {
-                    if (!p.connected || p.id == 0)
+                    if (!p.connected || p.id == joinInfo->player_id)
                         continue;
 
-                    if (p.id == joinInfo->player_id)
-                        continue;
-
-                    if (p.team == static_cast<int>(NetTeam::Fire)) ++fireCount;
-                    else if (p.team == static_cast<int>(NetTeam::Water)) ++waterCount;
+                    if (p.team == static_cast<int>(NetTeam::Fire))
+                        ++fireCount;
+                    else if (p.team == static_cast<int>(NetTeam::Water))
+                        ++waterCount;
                 }
             }
 
@@ -749,4 +751,37 @@ bool TeamSelectState::HandleEvent(const sf::Event& event)
     }
 
     return false;
+}
+
+void TeamSelectState::rebuild_layout(sf::Vector2u new_size)
+{
+    const sf::Vector2f view_size(static_cast<float>(new_size.x), static_cast<float>(new_size.y));
+
+    m_title.setPosition({ view_size.x * 0.5f, view_size.y * 0.12f });
+    m_mode_text.setPosition({ view_size.x * 0.5f, view_size.y * 0.18f });
+    m_name_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.25f });
+    m_fire_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.36f });
+    m_water_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.44f });
+    m_players_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.52f });
+    m_hint.setPosition({ view_size.x * 0.5f, view_size.y * 0.62f });
+
+    if (m_join_fire_button)
+        m_join_fire_button->setPosition({ view_size.x * 0.5f - 100.f, view_size.y * 0.72f });
+
+    if (m_join_water_button)
+        m_join_water_button->setPosition({ view_size.x * 0.5f - 100.f, view_size.y * 0.80f });
+
+    if (m_spectate_button)
+        m_spectate_button->setPosition({ view_size.x * 0.72f, view_size.y * 0.72f });
+
+    if (m_start_button)
+        m_start_button->setPosition({ view_size.x * 0.72f, view_size.y * 0.64f });
+
+    if (m_back_button)
+        m_back_button->setPosition({ view_size.x * 0.72f, view_size.y * 0.80f });
+}
+
+void TeamSelectState::OnResize(sf::Vector2u new_size)
+{
+    rebuild_layout(new_size);
 }

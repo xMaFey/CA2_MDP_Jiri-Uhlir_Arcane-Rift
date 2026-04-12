@@ -27,6 +27,8 @@ public:
 	void ClearStack();
 	bool IsEmpty() const;
 
+	void OnResize(sf::Vector2u new_size);
+
 private:
 	State::Ptr CreateState(StateID state_id);
 	void ApplyPendingChanges();

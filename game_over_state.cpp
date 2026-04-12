@@ -19,7 +19,10 @@ GameOverState::GameOverState(StateStack& stack, Context context)
 {
     GetContext().music->PlayLoop("Media/Audio/music/background.wav", 30.f);
 
-    sf::Vector2f view_size = context.window->getView().getSize();
+    sf::Vector2f view_size(
+        static_cast<float>(context.window->getSize().x),
+        static_cast<float>(context.window->getSize().y)
+    );
 
 
 	// scale background to fit view
@@ -55,10 +58,10 @@ GameOverState::GameOverState(StateStack& stack, Context context)
 	m_hint.setPosition({ view_size.x * 0.5f, view_size.y * 0.38f });
 
     // buttons
-	auto play_again = std::make_shared<gui::Button>(*context.fonts, *context.textures);
-    play_again->SetText("Play Again (Enter)");
-	play_again->setPosition({ view_size.x / 2.f - 100.f, view_size.y * 0.52f });
-    play_again->SetCallback([this]()
+    m_play_again_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+    m_play_again_button->SetText("Play Again (Enter)");
+    m_play_again_button->setPosition({ view_size.x / 2.f - 100.f, view_size.y * 0.52f });
+    m_play_again_button->SetCallback([this]()
         {
             GetContext().sounds->Play(SoundID::kButton);
 
@@ -67,26 +70,27 @@ GameOverState::GameOverState(StateStack& stack, Context context)
             RequestStackPush(StateID::kTeamSelect);
         });
 
-    auto back_to_menu = std::make_shared<gui::Button>(*context.fonts, *context.textures);
-	back_to_menu->SetText("Back to Menu (Escape)");
-	back_to_menu->setPosition({ view_size.x / 2.f - 100.f, view_size.y * 0.62f });
-    back_to_menu->SetCallback([this]()
+    m_back_to_menu_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+    m_back_to_menu_button->SetText("Back to Menu (Escape)");
+    m_back_to_menu_button->setPosition({ view_size.x / 2.f - 100.f, view_size.y * 0.62f });
+    m_back_to_menu_button->SetCallback([this]()
         {
             GetContext().sounds->Play(SoundID::kButton);
             RequestStackClear();
             RequestStackPush(StateID::kMenu);
 		});
 
-	m_gui.Pack(play_again);
-	m_gui.Pack(back_to_menu);
+    m_gui.Pack(m_play_again_button);
+    m_gui.Pack(m_back_to_menu_button);
+
+    rebuild_layout(context.window->getSize());
 }
 
 void GameOverState::Draw(sf::RenderTarget& target)
 {
-    sf::RenderWindow& window = *GetContext().window;
-    window.setView(window.getDefaultView());
+    target.setView(target.getDefaultView());
 
-	target.draw(m_background_sprite);
+    target.draw(m_background_sprite);
     target.draw(m_overlay);
     target.draw(m_title);
     target.draw(m_hint);
@@ -122,4 +126,32 @@ bool GameOverState::HandleEvent(const sf::Event& event)
     }
 
     return false;
+}
+
+void GameOverState::rebuild_layout(sf::Vector2u new_size)
+{
+    const sf::Vector2f view_size(static_cast<float>(new_size.x), static_cast<float>(new_size.y));
+
+    const sf::Vector2u texSize = m_background_sprite.getTexture().getSize();
+    if (texSize.x > 0 && texSize.y > 0)
+    {
+        const float sx = view_size.x / static_cast<float>(texSize.x);
+        const float sy = view_size.y / static_cast<float>(texSize.y);
+        m_background_sprite.setScale({ sx, sy });
+    }
+
+    m_overlay.setSize(view_size);
+    m_title.setPosition({ view_size.x / 2.f, view_size.y / 3.f });
+    m_hint.setPosition({ view_size.x * 0.5f, view_size.y * 0.38f });
+
+    if (m_play_again_button)
+        m_play_again_button->setPosition({ view_size.x / 2.f - 100.f, view_size.y * 0.52f });
+
+    if (m_back_to_menu_button)
+        m_back_to_menu_button->setPosition({ view_size.x / 2.f - 100.f, view_size.y * 0.62f });
+}
+
+void GameOverState::OnResize(sf::Vector2u new_size)
+{
+    rebuild_layout(new_size);
 }

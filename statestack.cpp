@@ -34,6 +34,14 @@ void StateStack::Draw(sf::RenderTarget& target)
 
 }
 
+void StateStack::OnResize(sf::Vector2u new_size)
+{
+	for (State::Ptr& state : m_stack)
+	{
+		state->OnResize(new_size);
+	}
+}
+
 void StateStack::HandleEvent(const sf::Event& event)
 {
 	for (auto itr = m_stack.rbegin(); itr != m_stack.rend(); ++itr)

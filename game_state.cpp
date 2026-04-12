@@ -14,10 +14,12 @@
 #include <SFML/Network/IpAddress.hpp>
 #include "game_settings.hpp"
 #include "sound_id.hpp"
+#include "utility.hpp"
 
 namespace
 {
     constexpr int kPendingLocalPlayerId = -100;
+    constexpr sf::Time kTeamSwitchDelay = sf::seconds(3.f);
 
     // checking if the player is actually in one of the two fighting teams
     bool is_combat_team(GameSettings::Team t)
@@ -82,13 +84,15 @@ namespace
     {
         static const std::vector<sf::Vector2f> spawns =
         {
-            {260.f, 360.f},
-            {1020.f, 360.f},
-            {150.f, 140.f},
-            {1130.f, 140.f},
-            {150.f, 620.f},
-            {1130.f, 620.f},
-            {640.f, 360.f}
+            {300.f, 300.f},
+            {2900.f, 300.f},
+            {300.f, 1500.f},
+            {2900.f, 1500.f},
+            {1600.f, 300.f},
+            {1600.f, 1500.f},
+            {1600.f, 900.f},
+            {700.f, 900.f},
+            {2500.f, 900.f}
         };
 
         if (id >= 0 && id < static_cast<int>(spawns.size()))
@@ -106,6 +110,9 @@ GameState::GameState(StateStack& stack, Context context)
     , m_pause_options(context.fonts->Get(FontID::kMain))
 {
     auto& settings = *GetContext().settings;
+
+    // Start the world camera with the same size as the visible window.
+    m_world_view = m_window.getDefaultView();
 
     GetContext().music->Stop();
 
@@ -241,24 +248,47 @@ GameState::GameState(StateStack& stack, Context context)
     m_hud.setPosition({ 14.f, 10.f });
 
     // pause menu visuals
-    m_pause_overlay.setSize(sf::Vector2f(m_window.getSize()));
+    const sf::Vector2f viewSize(
+        static_cast<float>(m_window.getSize().x),
+        static_cast<float>(m_window.getSize().y)
+    );
+
+    m_pause_overlay.setSize(viewSize);
     m_pause_overlay.setFillColor(sf::Color(0, 0, 0, 170));
 
     m_pause_title.setString("Game Menu");
     m_pause_title.setCharacterSize(42);
-    m_pause_title.setPosition({ 520.f, 160.f });
+    Utility::CentreOrigin(m_pause_title);
+    m_pause_title.setPosition({ viewSize.x * 0.5f, viewSize.y * 0.18f });
 
     m_pause_options.setCharacterSize(26);
-    m_pause_options.setPosition({ 390.f, 250.f });
+    Utility::CentreOrigin(m_pause_options);
+    m_pause_options.setPosition({ viewSize.x * 0.5f, viewSize.y * 0.28f });
+
+    build_pause_gui();
+    update_pause_button_states();
+
+    rebuild_pause_layout(m_window.getSize());
 
     // spawn points used when a player dies
     m_spawn_points =
     {
-        {150.f, 140.f},
-        {150.f, 620.f},
-        {1130.f, 140.f},
-        {1130.f, 620.f},
-        {640.f, 360.f}
+        // corners / near-corners
+        {260.f, 220.f},
+        {260.f, 1580.f},
+        {2940.f, 220.f},
+        {2940.f, 1580.f},
+
+        // mid-left / mid-right
+        {620.f, 900.f},
+        {2580.f, 900.f},
+
+        // upper-middle / lower-middle
+        {1600.f, 260.f},
+        {1600.f, 1540.f},
+
+        // center-ish fallback
+        {1600.f, 900.f}
     };
 }
 
@@ -282,6 +312,81 @@ const GameState::PlayerSlot* GameState::find_player(int id) const
     }
 
     return nullptr;
+}
+
+void GameState::draw_player_name(sf::RenderTarget& target, const PlayerSlot& player) const
+{
+    if (!player.connected)
+        return;
+
+    // Skip unnamed / empty cases just in case.
+    if (player.nickname.empty())
+        return;
+
+    sf::Text nameText(GetContext().fonts->Get(FontID::kMain));
+    nameText.setCharacterSize(16);
+    nameText.setString(player.nickname);
+
+    // Center the text nicely.
+    Utility::CentreOrigin(nameText);
+
+    // White text with black outline so it stays readable.
+    nameText.setFillColor(sf::Color::White);
+    nameText.setOutlineColor(sf::Color::Black);
+    nameText.setOutlineThickness(2.f);
+
+    // Position slightly above the player sprite/body.
+    const sf::Vector2f pos = player.entity.position();
+    nameText.setPosition({ pos.x, pos.y - 65.f });
+
+    target.draw(nameText);
+}
+
+sf::Vector2f GameState::get_camera_target() const
+{
+    const PlayerSlot* localPlayer = nullptr;
+    const auto& settings = *GetContext().settings;
+
+    if (settings.network_role == GameSettings::NetworkRole::Host)
+    {
+        localPlayer = find_player(0);
+    }
+    else if (settings.network_role == GameSettings::NetworkRole::Client)
+    {
+        if (m_local_player_id >= 0)
+            localPlayer = find_player(m_local_player_id);
+        else
+            localPlayer = find_player(kPendingLocalPlayerId);
+    }
+    else
+    {
+        localPlayer = find_player(0);
+    }
+
+    // Fallback to center of the map if no valid player exists yet.
+    if (!localPlayer || !localPlayer->connected)
+        return { m_world_size.x * 0.5f, m_world_size.y * 0.5f };
+
+    return localPlayer->entity.position();
+}
+
+void GameState::update_camera()
+{
+    sf::Vector2f center = get_camera_target();
+    const sf::Vector2f halfSize = m_world_view.getSize() * 0.5f;
+
+    // Clamp camera so it does not show outside the world bounds.
+    if (center.x < halfSize.x)
+        center.x = halfSize.x;
+    if (center.y < halfSize.y)
+        center.y = halfSize.y;
+
+    if (center.x > m_world_size.x - halfSize.x)
+        center.x = m_world_size.x - halfSize.x;
+    if (center.y > m_world_size.y - halfSize.y)
+        center.y = m_world_size.y - halfSize.y;
+
+    m_world_view.setCenter(center);
 }
 
 GameState::PlayerSlot& GameState::ensure_player_slot(int id)
@@ -309,6 +414,7 @@ void GameState::apply_team_change_now(PlayerSlot& player, GameSettings::Team new
     player.team = newTeam;
     player.has_pending_team_change = false;
     player.pending_team = GameSettings::Team::Spectator;
+    player.pending_team_change_timer = sf::Time::Zero;
 
     // Move to a sensible spawn position when becoming active / switching.
     player.entity.set_position(spawn_for_player_id(player.id));
@@ -326,9 +432,10 @@ void GameState::queue_team_change(PlayerSlot& player, GameSettings::Team newTeam
         return;
 
     // Store a pending switch. It will be applied by the host
-    // after this player dies.
+    // after a short delay instead of waiting for death.
     player.has_pending_team_change = true;
     player.pending_team = newTeam;
+    player.pending_team_change_timer = sf::Time::Zero;
 }
 
 int GameState::count_connected_players_on_team(GameSettings::Team team) const
@@ -412,6 +519,158 @@ GameState::PlayerSlot* GameState::get_local_player_slot()
     return find_player(0);
 }
 
+LobbyStatePacket GameState::build_running_match_lobby_packet_for_player(int playerId) const
+{
+    LobbyStatePacket lobby;
+    lobby.your_player_id = playerId;
+    lobby.match_started = true;   // this is what makes TeamSelectState enter GameState
+    lobby.can_spectate = true;
+
+    for (const auto& p : m_players)
+    {
+        if (!p.connected)
+            continue;
+
+        LobbyPlayerState lp;
+        lp.id = p.id;
+        lp.nickname = p.nickname;
+        lp.team = encode_team(p.team);
+        lp.connected = p.connected;
+        lobby.players.push_back(lp);
+
+        if (p.team == GameSettings::Team::Fire)
+            ++lobby.fire_count;
+        else if (p.team == GameSettings::Team::Water)
+            ++lobby.water_count;
+        else
+            ++lobby.spectator_count;
+    }
+
+    lobby.can_join_fire =
+        (lobby.fire_count < GetContext().settings->team_limit &&
+            lobby.fire_count <= lobby.water_count);
+
+    lobby.can_join_water =
+        (lobby.water_count < GetContext().settings->team_limit &&
+            lobby.water_count <= lobby.fire_count);
+
+    return lobby;
+}
+
+void GameState::build_pause_gui()
+{
+    const auto context = GetContext();
+
+    sf::Vector2f viewSize(
+        static_cast<float>(context.window->getSize().x),
+        static_cast<float>(context.window->getSize().y)
+    );
+
+    m_pause_fire_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+    m_pause_fire_button->SetText("Switch to Fire");
+    m_pause_fire_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.42f });
+    m_pause_fire_button->SetCallback([this]()
+        {
+            auto& settings = *GetContext().settings;
+            PlayerSlot* localPlayer = get_local_player_slot();
+            if (!localPlayer)
+                return;
+
+            GetContext().sounds->Play(SoundID::kButton);
+
+            if (settings.network_role == GameSettings::NetworkRole::Client)
+            {
+                if (m_client_session)
+                {
+                    TeamChangeRequestPacket request;
+                    request.requested_team = static_cast<int>(NetTeam::Fire);
+                    m_client_session->send_team_change_request(request);
+                }
+            }
+            else
+            {
+                if (can_switch_local_to_fire())
+                    queue_team_change(*localPlayer, GameSettings::Team::Fire);
+            }
+
+            m_pause_open = false;
+        });
+
+    m_pause_water_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+    m_pause_water_button->SetText("Switch to Water");
+    m_pause_water_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.50f });
+    m_pause_water_button->SetCallback([this]()
+        {
+            auto& settings = *GetContext().settings;
+            PlayerSlot* localPlayer = get_local_player_slot();
+            if (!localPlayer)
+                return;
+
+            GetContext().sounds->Play(SoundID::kButton);
+
+            if (settings.network_role == GameSettings::NetworkRole::Client)
+            {
+                if (m_client_session)
+                {
+                    TeamChangeRequestPacket request;
+                    request.requested_team = static_cast<int>(NetTeam::Water);
+                    m_client_session->send_team_change_request(request);
+                }
+            }
+            else
+            {
+                if (can_switch_local_to_water())
+                    queue_team_change(*localPlayer, GameSettings::Team::Water);
+            }
+
+            m_pause_open = false;
+        });
+
+    m_pause_spectate_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+    m_pause_spectate_button->SetText("Switch to Spectator");
+    m_pause_spectate_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.58f });
+    m_pause_spectate_button->SetCallback([this]()
+        {
+            auto& settings = *GetContext().settings;
+            PlayerSlot* localPlayer = get_local_player_slot();
+            if (!localPlayer)
+                return;
+
+            GetContext().sounds->Play(SoundID::kButton);
+
+            if (settings.network_role == GameSettings::NetworkRole::Client)
+            {
+                if (m_client_session)
+                {
+                    TeamChangeRequestPacket request;
+                    request.requested_team = static_cast<int>(NetTeam::Spectator);
+                    m_client_session->send_team_change_request(request);
+                }
+            }
+            else
+            {
+                queue_team_change(*localPlayer, GameSettings::Team::Spectator);
+            }
+
+            m_pause_open = false;
+        });
+
+    m_pause_back_to_menu_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+    m_pause_back_to_menu_button->SetText("Back to Menu");
+    m_pause_back_to_menu_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.68f });
+    m_pause_back_to_menu_button->SetCallback([this]()
+        {
+            GetContext().sounds->Play(SoundID::kButton);
+            RequestStackClear();
+            RequestStackPush(StateID::kMenu);
+        });
+
+    m_pause_gui.Pack(m_pause_fire_button);
+    m_pause_gui.Pack(m_pause_water_button);
+    m_pause_gui.Pack(m_pause_spectate_button);
+    m_pause_gui.Pack(m_pause_back_to_menu_button);
+}
+
 PlayerInput GameState::build_input_from_keybinds(const PlayerKeybinds& keys, bool& dashPrev)
 {
     PlayerInput input;
@@ -442,7 +701,11 @@ PlayerInput GameState::build_input_from_keybinds(const PlayerKeybinds& keys, boo
 
 bool GameState::HandleEvent(const sf::Event& event)
 {
-    auto& settings = *GetContext().settings;
+    if (m_pause_open)
+    {
+        update_pause_button_states();
+        m_pause_gui.HandleEvent(event);
+    }
 
     if (const auto* key = event.getIf<sf::Event::KeyPressed>())
     {
@@ -455,90 +718,7 @@ bool GameState::HandleEvent(const sf::Event& event)
 
         if (m_pause_open)
         {
-            PlayerSlot* localPlayer = get_local_player_slot();
-
-            // 1 = request Fire
-            if (key->scancode == sf::Keyboard::Scancode::Num1)
-            {
-                if (localPlayer)
-                {
-                    if (settings.network_role == GameSettings::NetworkRole::Client)
-                    {
-                        if (m_client_session)
-                        {
-                            TeamChangeRequestPacket request;
-                            request.requested_team = static_cast<int>(NetTeam::Fire);
-                            m_client_session->send_team_change_request(request);
-                        }
-                    }
-                    else
-                    {
-                        if (can_join_team(GameSettings::Team::Fire, localPlayer->id))
-                            queue_team_change(*localPlayer, GameSettings::Team::Fire);
-                    }
-                }
-
-                m_pause_open = false;
-                return false;
-            }
-
-            // 2 = request Water
-            if (key->scancode == sf::Keyboard::Scancode::Num2)
-            {
-                if (localPlayer)
-                {
-                    if (settings.network_role == GameSettings::NetworkRole::Client)
-                    {
-                        if (m_client_session)
-                        {
-                            TeamChangeRequestPacket request;
-                            request.requested_team = static_cast<int>(NetTeam::Water);
-                            m_client_session->send_team_change_request(request);
-                        }
-                    }
-                    else
-                    {
-                        if (can_join_team(GameSettings::Team::Water, localPlayer->id))
-                            queue_team_change(*localPlayer, GameSettings::Team::Water);
-                    }
-                }
-
-                m_pause_open = false;
-                return false;
-            }
-
-            // 3 = request Spectator
-            if (key->scancode == sf::Keyboard::Scancode::Num3)
-            {
-                if (localPlayer)
-                {
-                    if (settings.network_role == GameSettings::NetworkRole::Client)
-                    {
-                        if (m_client_session)
-                        {
-                            TeamChangeRequestPacket request;
-                            request.requested_team = static_cast<int>(NetTeam::Spectator);
-                            m_client_session->send_team_change_request(request);
-                        }
-                    }
-                    else
-                    {
-                        queue_team_change(*localPlayer, GameSettings::Team::Spectator);
-                    }
-                }
-
-                m_pause_open = false;
-                return false;
-            }
-
-            // M = back to menu
-            if (key->scancode == sf::Keyboard::Scancode::M)
-            {
-                RequestStackClear();
-                RequestStackPush(StateID::kMenu);
-                return false;
-            }
-
+            // Pause GUI handles buttons now.
             return false;
         }
     }
@@ -555,25 +735,81 @@ void GameState::build_map()
             sf::RectangleShape r;
             r.setSize({ w, h });
             r.setPosition({ x, y });
-            r.setFillColor(sf::Color(40, 40, 55));
+            r.setFillColor(sf::Color(50, 50, 70));
             m_walls.push_back(r);
         };
 
-    const float W = static_cast<float>(m_window.getSize().x);
-    const float H = static_cast<float>(m_window.getSize().y);
+    const float W = m_world_size.x;
+    const float H = m_world_size.y;
 
-    // border walls
-    make_wall(0.f, 0.f, W, 20.f);
-    make_wall(0.f, H - 20.f, W, 20.f);
-    make_wall(0.f, 0.f, 20.f, H);
-    make_wall(W - 20.f, 0.f, 20.f, H);
+    const float border = 20.f;
+    const float thick = 28.f;
+    const float thin = 24.f;
 
-    // inside walls
-    make_wall(W * 0.20f, H * 0.18f, 24.f, H * 0.52f);
-    make_wall(W * 0.35f, H * 0.30f, W * 0.30f, 24.f);
-    make_wall(W * 0.55f, H * 0.18f, 24.f, H * 0.55f);
-    make_wall(W * 0.25f, H * 0.72f, W * 0.35f, 24.f);
-    make_wall(W * 0.72f, H * 0.40f, 24.f, H * 0.40f);
+    // -------------------------------------------------
+    // OUTER BORDERS
+    // Keep players and bullets inside the map.
+    // -------------------------------------------------
+    make_wall(0.f, 0.f, W, border);
+    make_wall(0.f, H - border, W, border);
+    make_wall(0.f, 0.f, border, H);
+    make_wall(W - border, 0.f, border, H);
+
+    // -------------------------------------------------
+    // CENTRAL STRUCTURE
+    // -------------------------------------------------
+    make_wall(W * 0.42f, H * 0.18f, thick, H * 0.22f);
+    make_wall(W * 0.55f, H * 0.18f, thick, H * 0.22f);
+
+    make_wall(W * 0.42f, H * 0.60f, thick, H * 0.22f);
+    make_wall(W * 0.55f, H * 0.60f, thick, H * 0.22f);
+
+    make_wall(W * 0.46f, H * 0.46f, W * 0.08f, thick);
+
+    // -------------------------------------------------
+    // LEFT SIDE COVER
+    // -------------------------------------------------
+    make_wall(W * 0.18f, H * 0.14f, thick, H * 0.18f);
+    make_wall(W * 0.18f, H * 0.52f, thick, H * 0.18f);
+
+    make_wall(W * 0.10f, H * 0.32f, W * 0.12f, thin);
+    make_wall(W * 0.12f, H * 0.72f, W * 0.16f, thin);
+
+    make_wall(W * 0.26f, H * 0.24f, W * 0.10f, thin);
+    make_wall(W * 0.26f, H * 0.62f, W * 0.10f, thin);
+
+    // -------------------------------------------------
+    // RIGHT SIDE COVER
+    // -------------------------------------------------
+    make_wall(W * 0.80f, H * 0.16f, thick, H * 0.16f);
+    make_wall(W * 0.80f, H * 0.56f, thick, H * 0.18f);
+
+    make_wall(W * 0.70f, H * 0.30f, W * 0.14f, thin);
+    make_wall(W * 0.72f, H * 0.74f, W * 0.12f, thin);
+
+    make_wall(W * 0.64f, H * 0.18f, W * 0.10f, thin);
+    make_wall(W * 0.64f, H * 0.62f, W * 0.10f, thin);
+
+    // -------------------------------------------------
+    // TOP LANE OBSTACLES
+    // -------------------------------------------------
+    make_wall(W * 0.30f, H * 0.10f, W * 0.10f, thin);
+    make_wall(W * 0.60f, H * 0.10f, W * 0.10f, thin);
+
+    // -------------------------------------------------
+    // BOTTOM LANE OBSTACLES
+    // -------------------------------------------------
+    make_wall(W * 0.28f, H * 0.86f, W * 0.12f, thin);
+    make_wall(W * 0.60f, H * 0.84f, W * 0.12f, thin);
+
+    // -------------------------------------------------
+    // MID-LANE SMALL PILLARS
+    // -------------------------------------------------
+    make_wall(W * 0.32f, H * 0.44f, thick, H * 0.10f);
+    make_wall(W * 0.66f, H * 0.44f, thick, H * 0.10f);
+
+    make_wall(W * 0.24f, H * 0.46f, W * 0.06f, thin);
+    make_wall(W * 0.70f, H * 0.46f, W * 0.06f, thin);
 }
 
 bool GameState::spawn_is_clear(sf::Vector2f p) const
@@ -613,7 +849,7 @@ sf::Vector2f GameState::pick_safe_spawn(const PlayerEntity& enemy) const
 
     // second pass: farthest clear spawn
     bool foundClear = false;
-    sf::Vector2f best = { 640.f, 360.f };
+    sf::Vector2f best = { m_world_size.x * 0.5f, m_world_size.y * 0.5f };
     float best_d2 = -1.f;
 
     for (const auto& sp : candidates)
@@ -635,15 +871,21 @@ sf::Vector2f GameState::pick_safe_spawn(const PlayerEntity& enemy) const
 
 void GameState::Draw(sf::RenderTarget& target)
 {
-    // background
+    // ---------- WORLD VIEW ----------
+    target.setView(m_world_view);
+
+    // Large background that covers the whole world.
     sf::RectangleShape bg;
-    bg.setSize(sf::Vector2f(m_window.getSize()));
+    bg.setSize(m_world_size);
     bg.setFillColor(sf::Color(18, 18, 28));
     target.draw(bg);
 
     // map and bullets
-    for (auto& w : m_walls) target.draw(w);
-    for (auto& b : m_bullets) b.draw(target);
+    for (auto& w : m_walls)
+        target.draw(w);
+
+    for (auto& b : m_bullets)
+        b.draw(target);
 
     // draw connected combat players sorted by Y
     std::vector<const PlayerSlot*> drawPlayers;
@@ -660,7 +902,13 @@ void GameState::Draw(sf::RenderTarget& target)
         });
 
     for (const auto* p : drawPlayers)
+    {
         p->entity.draw(target);
+        draw_player_name(target, *p);
+    }
+
+    // ---------- UI VIEW ----------
+    target.setView(target.getDefaultView());
 
     target.draw(m_hud);
 
@@ -669,12 +917,18 @@ void GameState::Draw(sf::RenderTarget& target)
         target.draw(m_pause_overlay);
         target.draw(m_pause_title);
         target.draw(m_pause_options);
+        target.draw(m_pause_gui);
     }
 }
 
 bool GameState::Update(sf::Time dt)
 {
     auto& settings = *GetContext().settings;
+
+    if (m_pause_open)
+    {
+        update_pause_button_states();
+    }
 
     PlayerSlot* localPlayer = nullptr;
 
@@ -735,6 +989,18 @@ bool GameState::Update(sf::Time dt)
                     apply_team_visuals(remotePlayer.entity, remotePlayer.team);
                 else
                     apply_spectator_visuals(remotePlayer.entity);
+
+                // IMPORTANT:
+                // If a client joins/reconnects while the match is already running,
+                // send them a lobby packet with match_started=true so their
+                // TeamSelectState can enter GameState immediately.
+                if (m_host_session)
+                {
+                    LobbyStatePacket runningLobby =
+                        build_running_match_lobby_packet_for_player(remotePlayer.id);
+
+                    m_host_session->send_lobby_state_to_player(remotePlayer.id, runningLobby);
+                }
 
                 std::cout << "Client joined: " << remotePlayer.nickname
                     << " id=" << remotePlayer.id << "\n";
@@ -829,6 +1095,29 @@ bool GameState::Update(sf::Time dt)
         PlayerSlot* offlineHost = find_player(0);
         if (offlineHost && offlineHost->connected && is_combat_team(offlineHost->team))
             hostInput = build_input_from_keybinds(settings.local_keys, offlineHost->dash_prev);
+    }
+
+    // Host/offline applies pending team switches after a short delay.
+    // This works for alive players and spectators too.
+    if (settings.network_role != GameSettings::NetworkRole::Client)
+    {
+        for (auto& p : m_players)
+        {
+            if (!p.connected || !p.has_pending_team_change)
+                continue;
+
+            p.pending_team_change_timer += dt;
+
+            if (p.pending_team_change_timer >= kTeamSwitchDelay)
+            {
+                // Re-check the team rules at the moment of applying.
+                // This keeps balancing correct even if counts changed meanwhile.
+                if (can_join_team(p.pending_team, p.id))
+                {
+                    apply_team_change_now(p, p.pending_team);
+                }
+            }
+        }
     }
 
     // Update players.
@@ -1033,20 +1322,6 @@ bool GameState::Update(sf::Time dt)
                         ++m_water_kills;
                     }
 
-                    // If this player requested a team switch, apply it now
-                    // after death, before the respawn.
-                    if (targetPlayer.has_pending_team_change)
-                    {
-                        apply_team_change_now(targetPlayer, targetPlayer.pending_team);
-
-                        // If the player switched into spectator mode,
-                        // they should stop being a combat player immediately.
-                        if (!is_combat_team(targetPlayer.team))
-                        {
-                            break;
-                        }
-                    }
-
                     targetPlayer.entity.respawn(pick_safe_spawn(shooter->entity));
                     break;
                 }
@@ -1222,9 +1497,9 @@ bool GameState::Update(sf::Time dt)
                 }
 
                 // Smooth bullet sync:
-// Do NOT destroy and recreate all bullets every packet.
-// Instead, update existing bullets by bullet_id, create only
-// missing ones, and remove bullets that no longer exist on host.
+                // Do NOT destroy and recreate all bullets every packet.
+                // Instead, update existing bullets by bullet_id, create only
+                // missing ones, and remove bullets that no longer exist on host.
                 std::vector<int> seen_bullet_ids;
                 seen_bullet_ids.reserve(m_latest_world_state->bullets.size());
 
@@ -1376,12 +1651,11 @@ bool GameState::Update(sf::Time dt)
     m_hud.setString(ss.str());
 
     m_pause_options.setString(
-        "Esc - Resume\n"
-        "1 - Switch to Fire after death\n"
-        "2 - Switch to Water after death\n"
-        "3 - Switch to Spectator after death\n"
-        "M - Back to Menu"
+        "Choose a team switch option:\n"
+        "Disabled buttons mean the switch is not allowed right now."
     );
+
+    update_camera();
 
     // win condition
     if (m_fire_kills >= m_kills_to_win || m_water_kills >= m_kills_to_win)
@@ -1392,6 +1666,117 @@ bool GameState::Update(sf::Time dt)
     }
 
     return true;
+}
+
+bool GameState::can_switch_local_to_fire() const
+{
+    const PlayerSlot* localPlayer = nullptr;
+
+    auto& settings = *GetContext().settings;
+
+    if (settings.network_role == GameSettings::NetworkRole::Host)
+    {
+        localPlayer = find_player(0);
+    }
+    else if (settings.network_role == GameSettings::NetworkRole::Client)
+    {
+        if (m_local_player_id >= 0)
+            localPlayer = find_player(m_local_player_id);
+        else
+            localPlayer = find_player(kPendingLocalPlayerId);
+    }
+    else
+    {
+        localPlayer = find_player(0);
+    }
+
+    if (!localPlayer || !localPlayer->connected)
+        return false;
+
+    if (localPlayer->team == GameSettings::Team::Fire)
+        return false;
+
+    return can_join_team(GameSettings::Team::Fire, localPlayer->id);
+}
+
+bool GameState::can_switch_local_to_water() const
+{
+    const PlayerSlot* localPlayer = nullptr;
+
+    auto& settings = *GetContext().settings;
+
+    if (settings.network_role == GameSettings::NetworkRole::Host)
+    {
+        localPlayer = find_player(0);
+    }
+    else if (settings.network_role == GameSettings::NetworkRole::Client)
+    {
+        if (m_local_player_id >= 0)
+            localPlayer = find_player(m_local_player_id);
+        else
+            localPlayer = find_player(kPendingLocalPlayerId);
+    }
+    else
+    {
+        localPlayer = find_player(0);
+    }
+
+    if (!localPlayer || !localPlayer->connected)
+        return false;
+
+    if (localPlayer->team == GameSettings::Team::Water)
+        return false;
+
+    return can_join_team(GameSettings::Team::Water, localPlayer->id);
+}
+
+void GameState::update_pause_button_states()
+{
+    if (m_pause_fire_button)
+        m_pause_fire_button->SetEnabled(can_switch_local_to_fire());
+
+    if (m_pause_water_button)
+        m_pause_water_button->SetEnabled(can_switch_local_to_water());
+
+    if (m_pause_spectate_button)
+        m_pause_spectate_button->SetEnabled(true);
+
+    if (m_pause_back_to_menu_button)
+        m_pause_back_to_menu_button->SetEnabled(true);
+}
+
+void GameState::rebuild_pause_layout(sf::Vector2u new_size)
+{
+    const sf::Vector2f viewSize(static_cast<float>(new_size.x), static_cast<float>(new_size.y));
+
+    m_pause_overlay.setSize(viewSize);
+
+    Utility::CentreOrigin(m_pause_title);
+    m_pause_title.setPosition({ viewSize.x * 0.5f, viewSize.y * 0.18f });
+
+    Utility::CentreOrigin(m_pause_options);
+    m_pause_options.setPosition({ viewSize.x * 0.5f, viewSize.y * 0.28f });
+
+    if (m_pause_fire_button)
+        m_pause_fire_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.42f });
+
+    if (m_pause_water_button)
+        m_pause_water_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.50f });
+
+    if (m_pause_spectate_button)
+        m_pause_spectate_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.58f });
+
+    if (m_pause_back_to_menu_button)
+        m_pause_back_to_menu_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.68f });
+
+    // Keep the visible camera size in sync with the window size.
+    m_world_view.setSize(viewSize);
+}
+
+void GameState::OnResize(sf::Vector2u new_size)
+{
+    rebuild_pause_layout(new_size);
+    update_camera();
 }
 
 GameState::~GameState()

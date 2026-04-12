@@ -11,14 +11,31 @@ TitleState::TitleState(StateStack& stack, Context context) : State(stack, contex
 {
     m_text.setString("Press any key to continue");
     Utility::CentreOrigin(m_text);
-    m_text.setPosition(context.window->getView().getSize() / 2.f);
+
+    const sf::Vector2f viewSize(
+        static_cast<float>(context.window->getSize().x),
+        static_cast<float>(context.window->getSize().y)
+    );
+
+    m_text.setPosition(viewSize / 2.f);
+
+    const sf::Vector2u texSize = m_background_sprite.getTexture().getSize();
+
+    if (texSize.x > 0 && texSize.y > 0)
+    {
+        const float sx = viewSize.x / static_cast<float>(texSize.x);
+        const float sy = viewSize.y / static_cast<float>(texSize.y);
+        m_background_sprite.setScale({ sx, sy });
+    }
 
     GetContext().music->PlayLoop("Media/Audio/music/background.wav", 30.f);
+
+    rebuild_layout(context.window->getSize());
 }
 
 void TitleState::Draw(sf::RenderTarget& target)
 {
-    target.setView(GetContext().window->getDefaultView());
+    target.setView(target.getDefaultView());
     target.draw(m_background_sprite);
 
     if (m_show_text)
@@ -57,5 +74,25 @@ bool TitleState::HandleEvent(const sf::Event& event)
     }
 
     return true;
+}
+
+void TitleState::OnResize(sf::Vector2u new_size)
+{
+    rebuild_layout(new_size);
+}
+
+void TitleState::rebuild_layout(sf::Vector2u new_size)
+{
+    const sf::Vector2f viewSize(static_cast<float>(new_size.x), static_cast<float>(new_size.y));
+
+    m_text.setPosition(viewSize / 2.f);
+
+    const sf::Vector2u texSize = m_background_sprite.getTexture().getSize();
+    if (texSize.x > 0 && texSize.y > 0)
+    {
+        const float sx = viewSize.x / static_cast<float>(texSize.x);
+        const float sy = viewSize.y / static_cast<float>(texSize.y);
+        m_background_sprite.setScale({ sx, sy });
+    }
 }
 

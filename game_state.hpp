@@ -19,6 +19,8 @@
 #include "network_packets.hpp"
 #include <unordered_map>
 #include <deque>
+#include "container.hpp"
+#include "button.hpp"
 
 class GameState : public State
 {
@@ -46,9 +48,10 @@ private:
         sf::Vector2f replicated_dir{ 1.f, 0.f };
 
         // If true, the player has requested a team switch.
-        // The host applies it only after this player dies.
+        // The host applies it after a short delay instead of waiting for death.
         bool has_pending_team_change = false;
         GameSettings::Team pending_team = GameSettings::Team::Spectator;
+        sf::Time pending_team_change_timer = sf::Time::Zero;
     };
 
     void build_map();
@@ -70,8 +73,31 @@ private:
     bool can_join_team(GameSettings::Team team, int ignorePlayerId = -1) const;
     PlayerSlot* get_local_player_slot();
 
+    // Build a fake "running match" lobby packet so a reconnecting client
+    // can leave TeamSelectState and enter the already running match.
+    LobbyStatePacket build_running_match_lobby_packet_for_player(int playerId) const;
+
+    void build_pause_gui();
+    void OnResize(sf::Vector2u new_size) override;
+    void rebuild_pause_layout(sf::Vector2u new_size);
+    void update_pause_button_states();
+
+    bool can_switch_local_to_fire() const;
+    bool can_switch_local_to_water() const;
+
+    void draw_player_name(sf::RenderTarget& target, const PlayerSlot& player) const;
+
+    void update_camera();
+    sf::Vector2f get_camera_target() const;
+
 private:
     sf::RenderWindow& m_window;
+
+    // Size of the playable world, larger than the screen.
+    sf::Vector2f m_world_size{ 3200.f, 1800.f };
+
+    // Camera used to draw the scrolling game world.
+    sf::View m_world_view;
 
     std::vector<sf::RectangleShape> m_walls;
 	std::vector<sf::Vector2f> m_spawn_points;
@@ -101,4 +127,11 @@ private:
     sf::RectangleShape m_pause_overlay;
     sf::Text m_pause_title;
     sf::Text m_pause_options;
+
+    gui::Container m_pause_gui;
+
+    gui::Button::Ptr m_pause_fire_button;
+    gui::Button::Ptr m_pause_water_button;
+    gui::Button::Ptr m_pause_spectate_button;
+    gui::Button::Ptr m_pause_back_to_menu_button;
 };

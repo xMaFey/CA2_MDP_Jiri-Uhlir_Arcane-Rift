@@ -243,16 +243,33 @@ sf::Vector2f PlayerEntity::get_projectile_spawn_point(float projectile_radius) c
 {
     const sf::Vector2f feet = m_body.getPosition();
 
-    // "hands" height
+    // Spawn around the wizard's hands, not from the feet.
     const sf::Vector2f hands = feet + sf::Vector2f(0.f, -hurtbox_height * 0.65f);
 
     sf::Vector2f dir = m_last_dir;
-	const float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-    if (len > 0.f) { dir.x /= len; dir.y /= len; }
-	else { dir = { 1.f, 0.f }; }
+    const float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
 
-    // push spawn forward so it doesnt start inside your own hurtbox
-    const float forward = hurtbox_radius + projectile_radius + 6.f;
+    if (len > 0.f)
+    {
+        dir.x /= len;
+        dir.y /= len;
+    }
+    else
+    {
+        dir = { 1.f, 0.f };
+    }
+
+    // Keep the bullet a little in front of the hands so it does not collide
+    // with the caster immediately, but do NOT push it too far.
+    float forward = projectile_radius + 2.f;
+
+    // Extra safety for upward / upward-diagonal shots:
+    // when shooting toward a wall above the player, reduce the forward push
+    // even more so the bullet starts closer to the hands.
+    if (dir.y < -0.25f)
+    {
+        forward = projectile_radius + 0.5f;
+    }
 
     return hands + dir * forward;
 }

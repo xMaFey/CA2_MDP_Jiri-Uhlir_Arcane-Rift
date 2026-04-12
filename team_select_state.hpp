@@ -26,6 +26,9 @@ public:
     bool Update(sf::Time dt) override;
     bool HandleEvent(const sf::Event& event) override;
 
+    void OnResize(sf::Vector2u new_size) override;
+    void rebuild_layout(sf::Vector2u new_size);
+
 private:
     void refresh_text();
 
@@ -65,4 +68,5 @@ private:
     gui::Button::Ptr m_join_water_button;
     gui::Button::Ptr m_spectate_button;
     gui::Button::Ptr m_start_button;
+    gui::Button::Ptr m_back_button;
 };

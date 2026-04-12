@@ -13,6 +13,7 @@
 MenuState::MenuState(StateStack& stack, Context context) : State(stack, context), m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
 {
     auto host_button = std::make_shared<gui::Button>(*context.fonts, *context.textures);
+
     host_button->setPosition(sf::Vector2f(100, 250));
     host_button->SetText("Host Game");
     host_button->SetCallback([this]()
@@ -61,13 +62,46 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
     m_gui_container.Pack(settings_button);
     m_gui_container.Pack(exit_button);
 
+    const sf::Vector2u texSize = m_background_sprite.getTexture().getSize();
+
+    const sf::Vector2f viewSize(
+        static_cast<float>(context.window->getSize().x),
+        static_cast<float>(context.window->getSize().y)
+    );
+
+    if (texSize.x > 0 && texSize.y > 0)
+    {
+        const float sx = viewSize.x / static_cast<float>(texSize.x);
+        const float sy = viewSize.y / static_cast<float>(texSize.y);
+        m_background_sprite.setScale({ sx, sy });
+    }
+
     GetContext().music->PlayLoop("Media/Audio/music/background.wav", 30.f);
+
+    rebuild_layout(context.window->getSize());
+}
+
+void MenuState::rebuild_layout(sf::Vector2u new_size)
+{
+    const sf::Vector2f viewSize(static_cast<float>(new_size.x), static_cast<float>(new_size.y));
+
+    const sf::Vector2u texSize = m_background_sprite.getTexture().getSize();
+    if (texSize.x > 0 && texSize.y > 0)
+    {
+        const float sx = viewSize.x / static_cast<float>(texSize.x);
+        const float sy = viewSize.y / static_cast<float>(texSize.y);
+        m_background_sprite.setScale({ sx, sy });
+    }
+}
+
+void MenuState::OnResize(sf::Vector2u new_size)
+{
+    rebuild_layout(new_size);
 }
 
 void MenuState::Draw(sf::RenderTarget& target)
 {
-    sf::RenderWindow& window = *GetContext().window;
-    target.setView(window.getDefaultView());
+    target.setView(target.getDefaultView());
     target.draw(m_background_sprite);
     target.draw(m_gui_container);
 }
