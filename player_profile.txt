@@ -1,5 +1,5 @@
 nickname=HOST Jiri
-matches_played=1
-total_kills=0
-total_deaths=0
-best_match_kills=0
+matches_played=5
+total_kills=7
+total_deaths=2
+best_match_kills=3
