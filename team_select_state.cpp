@@ -10,6 +10,7 @@
 #include "stateid.hpp"
 #include <SFML/Network/IpAddress.hpp>
 #include <iostream>
+#include "profile_data.hpp"
 
 TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     : State(stack, context)
@@ -20,9 +21,13 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     , m_water_text(context.fonts->Get(FontID::kMain))
     , m_hint(context.fonts->Get(FontID::kMain))
     , m_players_text(context.fonts->Get(FontID::kMain))
+    , m_profile_text(context.fonts->Get(FontID::kMain))
 {
     auto& settings = *GetContext().settings;
     m_nickname = settings.nickname;
+
+    if (m_nickname.empty())
+        m_nickname = "Player";
 
     sf::Vector2f view_size(
         static_cast<float>(context.window->getSize().x),
@@ -41,6 +46,13 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     m_name_text.setCharacterSize(28);
     m_name_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.25f });
 
+    // Click this box to start typing nickname.
+    m_name_box.setSize({ 320.f, 42.f });
+    m_name_box.setFillColor(sf::Color(30, 30, 40, 220));
+    m_name_box.setOutlineThickness(2.f);
+    m_name_box.setOutlineColor(sf::Color::White);
+    m_name_box.setPosition({ view_size.x * 0.26f, view_size.y * 0.23f });
+
     m_fire_text.setCharacterSize(28);
     m_fire_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.36f });
 
@@ -50,7 +62,10 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     m_players_text.setCharacterSize(20);
     m_players_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.52f });
 
-    m_hint.setString("Type nickname");
+    m_profile_text.setCharacterSize(18);
+    m_profile_text.setPosition({ view_size.x * 0.60f, view_size.y * 0.25f });
+
+    m_hint.setString("Click nickname box to edit name");
     m_hint.setCharacterSize(18);
     Utility::CentreOrigin(m_hint);
     m_hint.setPosition({ view_size.x * 0.5f, view_size.y * 0.62f });
@@ -61,7 +76,7 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     m_join_fire_button->SetCallback([this]()
         {
             auto& settings = *GetContext().settings;
-            settings.nickname = m_nickname;
+            settings.nickname = m_nickname.empty() ? "Player" : m_nickname;
 
             GetContext().sounds->Play(SoundID::kButton);
 
@@ -92,7 +107,7 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     m_join_water_button->SetCallback([this]()
         {
             auto& settings = *GetContext().settings;
-            settings.nickname = m_nickname;
+            settings.nickname = m_nickname.empty() ? "Player" : m_nickname;
 
             GetContext().sounds->Play(SoundID::kButton);
 
@@ -123,7 +138,7 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     m_spectate_button->SetCallback([this]()
         {
             auto& settings = *GetContext().settings;
-            settings.nickname = m_nickname;
+            settings.nickname = m_nickname.empty() ? "Player" : m_nickname;
 
             GetContext().sounds->Play(SoundID::kButton);
 
@@ -361,9 +376,26 @@ void TeamSelectState::refresh_text()
     m_water_count = settings.latest_water_count;
     m_team_limit = settings.team_limit;
 
-    m_name_text.setString("Nickname: " + m_nickname);
+    const std::string shownName = m_nickname.empty() ? "Player" : m_nickname;
+    m_name_text.setString("Nickname: " + shownName + (m_name_editing ? "_" : ""));
+
+    if (m_name_editing)
+        m_name_box.setOutlineColor(sf::Color(255, 220, 120));
+    else
+        m_name_box.setOutlineColor(sf::Color::White);
+
     m_fire_text.setString("Fire Team: " + std::to_string(m_fire_count) + "/" + std::to_string(m_team_limit));
     m_water_text.setString("Water Team: " + std::to_string(m_water_count) + "/" + std::to_string(m_team_limit));
+
+    const auto& profile = settings.profile;
+
+    m_profile_text.setString(
+        "Saved Profile:\n"
+        "Matches: " + std::to_string(profile.matches_played) + "\n" +
+        "Total Kills: " + std::to_string(profile.total_kills) + "\n" +
+        "Total Deaths: " + std::to_string(profile.total_deaths) + "\n" +
+        "Best Match Kills: " + std::to_string(profile.best_match_kills)
+    );
 
     update_button_states();
     build_player_list_text();
@@ -380,11 +412,13 @@ void TeamSelectState::Draw(sf::RenderTarget& target)
 
     target.draw(m_title);
     target.draw(m_mode_text);
+    target.draw(m_name_box);
     target.draw(m_name_text);
     target.draw(m_fire_text);
     target.draw(m_water_text);
     target.draw(m_hint);
     target.draw(m_players_text);
+    target.draw(m_profile_text);
     target.draw(m_gui);
 }
 
@@ -543,7 +577,7 @@ bool TeamSelectState::Update(sf::Time)
         {
             if (p.id == 0)
             {
-                p.nickname = m_nickname;
+                p.nickname = m_nickname.empty() ? "Player" : m_nickname;
                 p.team = (settings.chosen_team == GameSettings::Team::Fire) ? static_cast<int>(NetTeam::Fire)
                     : (settings.chosen_team == GameSettings::Team::Water) ? static_cast<int>(NetTeam::Water)
                     : static_cast<int>(NetTeam::Spectator);
@@ -557,7 +591,7 @@ bool TeamSelectState::Update(sf::Time)
         {
             LobbyPlayerState hostPlayer;
             hostPlayer.id = 0;
-            hostPlayer.nickname = m_nickname;
+            hostPlayer.nickname = m_nickname.empty() ? "Player" : m_nickname;
             hostPlayer.team = (settings.chosen_team == GameSettings::Team::Fire) ? static_cast<int>(NetTeam::Fire)
                 : (settings.chosen_team == GameSettings::Team::Water) ? static_cast<int>(NetTeam::Water)
                 : static_cast<int>(NetTeam::Spectator);
@@ -681,24 +715,49 @@ bool TeamSelectState::HandleEvent(const sf::Event& event)
 {
     m_gui.HandleEvent(event);
 
+    if (const auto* mouse = event.getIf<sf::Event::MouseButtonPressed>())
+    {
+        if (mouse->button == sf::Mouse::Button::Left)
+        {
+            const sf::Vector2f mousePos(
+                static_cast<float>(mouse->position.x),
+                static_cast<float>(mouse->position.y)
+            );
+
+            // Click inside nickname box = start editing.
+            m_name_editing = m_name_box.getGlobalBounds().contains(mousePos);
+
+            refresh_text();
+        }
+    }
+
     if (const auto* text = event.getIf<sf::Event::TextEntered>())
     {
+        if (!m_name_editing)
+            return false;
+
         unsigned int unicode = text->unicode;
 
         if (unicode >= 32 && unicode <= 126 && m_nickname.size() < 14)
         {
             m_nickname += static_cast<char>(unicode);
-            GetContext().settings->nickname = m_nickname;
-            refresh_text();
 
             auto& settings = *GetContext().settings;
+            settings.nickname = m_nickname.empty() ? "Player" : m_nickname;
+            settings.profile.nickname = settings.nickname;
+
+            // Save nickname immediately so it persists across restarts.
+            ProfileData::Save(settings.profile);
+
+            refresh_text();
+
             if (settings.network_role == GameSettings::NetworkRole::Client &&
                 m_client_session &&
                 m_network_started)
             {
                 JoinInfoPacket joinInfo;
                 joinInfo.player_id = -1;
-                joinInfo.nickname = m_nickname;
+                joinInfo.nickname = settings.nickname;
 
                 if (settings.chosen_team == GameSettings::Team::Fire)
                     joinInfo.team = static_cast<int>(NetTeam::Fire);
@@ -715,20 +774,26 @@ bool TeamSelectState::HandleEvent(const sf::Event& event)
 
     if (const auto* key = event.getIf<sf::Event::KeyPressed>())
     {
-        if (key->scancode == sf::Keyboard::Scancode::Backspace && !m_nickname.empty())
+        if (key->scancode == sf::Keyboard::Scancode::Backspace && m_name_editing && !m_nickname.empty())
         {
             m_nickname.pop_back();
-            GetContext().settings->nickname = m_nickname;
-            refresh_text();
 
             auto& settings = *GetContext().settings;
+            settings.nickname = m_nickname.empty() ? "Player" : m_nickname;
+            settings.profile.nickname = settings.nickname;
+
+            // Save nickname immediately so it persists across restarts.
+            ProfileData::Save(settings.profile);
+
+            refresh_text();
+
             if (settings.network_role == GameSettings::NetworkRole::Client &&
                 m_client_session &&
                 m_network_started)
             {
                 JoinInfoPacket joinInfo;
                 joinInfo.player_id = -1;
-                joinInfo.nickname = m_nickname;
+                joinInfo.nickname = settings.nickname; // never send empty name
 
                 if (settings.chosen_team == GameSettings::Team::Fire)
                     joinInfo.team = static_cast<int>(NetTeam::Fire);
@@ -740,6 +805,11 @@ bool TeamSelectState::HandleEvent(const sf::Event& event)
                 m_client_session->send_join_info(joinInfo);
                 m_join_sent = true;
             }
+        }
+        else if (key->scancode == sf::Keyboard::Scancode::Enter)
+        {
+            m_name_editing = false;
+            refresh_text();
         }
         else if (key->scancode == sf::Keyboard::Scancode::Escape)
         {
@@ -764,6 +834,8 @@ void TeamSelectState::rebuild_layout(sf::Vector2u new_size)
     m_water_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.44f });
     m_players_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.52f });
     m_hint.setPosition({ view_size.x * 0.5f, view_size.y * 0.62f });
+    m_name_box.setPosition({ view_size.x * 0.26f, view_size.y * 0.23f });
+    m_profile_text.setPosition({ view_size.x * 0.60f, view_size.y * 0.25f });
 
     if (m_join_fire_button)
         m_join_fire_button->setPosition({ view_size.x * 0.5f - 100.f, view_size.y * 0.72f });

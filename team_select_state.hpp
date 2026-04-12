@@ -63,6 +63,10 @@ private:
     bool m_join_sent = false;
 
     sf::Text m_players_text;
+    sf::Text m_profile_text;
+
+    sf::RectangleShape m_name_box;
+    bool m_name_editing = false;
 
     gui::Button::Ptr m_join_fire_button;
     gui::Button::Ptr m_join_water_button;

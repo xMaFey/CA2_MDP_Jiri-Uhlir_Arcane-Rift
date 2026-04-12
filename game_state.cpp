@@ -15,6 +15,7 @@
 #include "game_settings.hpp"
 #include "sound_id.hpp"
 #include "utility.hpp"
+#include "profile_data.hpp"
 
 namespace
 {
@@ -525,6 +526,47 @@ GameState::PlayerSlot* GameState::get_local_player_slot()
     return find_player(0);
 }
 
+void GameState::add_local_kill()
+{
+    // Count a kill only for the local profile on this machine.
+    ++m_local_match_kills;
+}
+
+void GameState::add_local_death()
+{
+    // Count a death only for the local profile on this machine.
+    ++m_local_match_deaths;
+}
+
+void GameState::save_profile_if_needed()
+{
+    auto& settings = *GetContext().settings;
+
+    // Keep nickname in sync with the saved profile too.
+    settings.profile.nickname = settings.nickname;
+    ProfileData::Save(settings.profile);
+}
+
+void GameState::finish_match_and_save()
+{
+    if (m_match_stats_committed)
+        return;
+
+    auto& settings = *GetContext().settings;
+
+    // Commit this match into the persistent local profile.
+    settings.profile.nickname = settings.nickname;
+    settings.profile.matches_played += 1;
+    settings.profile.total_kills += m_local_match_kills;
+    settings.profile.total_deaths += m_local_match_deaths;
+
+    if (m_local_match_kills > settings.profile.best_match_kills)
+        settings.profile.best_match_kills = m_local_match_kills;
+
+    ProfileData::Save(settings.profile);
+    m_match_stats_committed = true;
+}
+
 LobbyStatePacket GameState::build_running_match_lobby_packet_for_player(int playerId) const
 {
     LobbyStatePacket lobby;
@@ -667,6 +709,10 @@ void GameState::build_pause_gui()
     m_pause_back_to_menu_button->SetCallback([this]()
         {
             GetContext().sounds->Play(SoundID::kButton);
+
+            // Leaving mid-match should still save current local progress.
+            finish_match_and_save();
+
             RequestStackClear();
             RequestStackPush(StateID::kMenu);
         });
@@ -1328,6 +1374,36 @@ bool GameState::Update(sf::Time dt)
                         ++m_water_kills;
                     }
 
+                    // Update persistent local stats only for the local player on this PC.
+                    if (settings.network_role == GameSettings::NetworkRole::Host)
+                    {
+                        if (shooter->id == 0)
+                            add_local_kill();
+
+                        if (targetPlayer.id == 0)
+                            add_local_death();
+                    }
+                    else if (settings.network_role == GameSettings::NetworkRole::Client)
+                    {
+                        if (m_local_player_id >= 0)
+                        {
+                            if (shooter->id == m_local_player_id)
+                                add_local_kill();
+
+                            if (targetPlayer.id == m_local_player_id)
+                                add_local_death();
+                        }
+                    }
+                    else
+                    {
+                        // Offline mode: local player is id 0.
+                        if (shooter->id == 0)
+                            add_local_kill();
+
+                        if (targetPlayer.id == 0)
+                            add_local_death();
+                    }
+
                     targetPlayer.entity.respawn(pick_safe_spawn(shooter->entity));
                     break;
                 }
@@ -1494,6 +1570,20 @@ bool GameState::Update(sf::Time dt)
                     localSlot->replicated_anim_state = netPlayer.anim_state;
                     localSlot->replicated_dir = netPlayer.dir;
 
+                    // Detect fresh respawn for the local client player.
+                    // When the host flips us into invulnerable state,
+                    // that means we have just died and respawned.
+                    const bool wasInvulnerable = localSlot->replicated_invulnerable;
+                    localSlot->replicated_invulnerable = netPlayer.invulnerable;
+
+                    if (m_local_player_id >= 0 &&
+                        netPlayer.id == m_local_player_id &&
+                        netPlayer.invulnerable &&
+                        !wasInvulnerable)
+                    {
+                        add_local_death();
+                    }
+
                     // Copy host invulnerability state too,
                     // so respawn blinking is visible on clients.
                     localSlot->entity.set_invulnerability_state(
@@ -1591,6 +1681,16 @@ bool GameState::Update(sf::Time dt)
                     const bool isSpellSound =
                         (sound == SoundID::kFireSpell || sound == SoundID::kWaterSpell);
 
+                    // If the host says this hit sound was caused by our local player,
+                    // count it as a local kill in the persistent profile stats.
+                    if ((sound == SoundID::kFireHit || sound == SoundID::kWaterHit) &&
+                        isLocalSource)
+                    {
+                        add_local_kill();
+                    }
+
+                    // Ignore our own replicated cast sound because we already
+                    // played it immediately when the local cast released.
                     if (isLocalSource && isSpellSound)
                         continue;
 
@@ -1687,6 +1787,9 @@ bool GameState::Update(sf::Time dt)
             settings.last_winner_team = GameSettings::Team::Fire;
         else
             settings.last_winner_team = GameSettings::Team::Water;
+
+        // Save this match into the local persistent profile before leaving.
+        finish_match_and_save();
 
         RequestStackClear();
         RequestStackPush(StateID::kGameOver);
@@ -1812,6 +1915,9 @@ void GameState::OnResize(sf::Vector2u new_size)
 
 GameState::~GameState()
 {
+    // Save local progress if the player leaves before normal match end.
+    finish_match_and_save();
+
     // When leaving the match, close host/client networking cleanly.
     if (GetContext().network)
         GetContext().network->disconnect();

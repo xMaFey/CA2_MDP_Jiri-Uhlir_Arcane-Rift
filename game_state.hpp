@@ -47,6 +47,9 @@ private:
         int replicated_anim_state = 0;
         sf::Vector2f replicated_dir{ 1.f, 0.f };
 
+        // Client-side helper to detect a fresh respawn from host snapshots.
+        bool replicated_invulnerable = false;
+
         // If true, the player has requested a team switch.
         // The host applies it after a short delay instead of waiting for death.
         bool has_pending_team_change = false;
@@ -89,6 +92,11 @@ private:
 
     void update_camera();
     sf::Vector2f get_camera_target() const;
+
+    void add_local_kill();
+    void add_local_death();
+    void save_profile_if_needed();
+    void finish_match_and_save();
 
 private:
     sf::RenderWindow& m_window;
@@ -134,4 +142,11 @@ private:
     gui::Button::Ptr m_pause_water_button;
     gui::Button::Ptr m_pause_spectate_button;
     gui::Button::Ptr m_pause_back_to_menu_button;
+
+    // Persistent local stats for the current match on this machine only.
+    int m_local_match_kills = 0;
+    int m_local_match_deaths = 0;
+
+    // Prevent saving the same finished match multiple times.
+    bool m_match_stats_committed = false;
 };

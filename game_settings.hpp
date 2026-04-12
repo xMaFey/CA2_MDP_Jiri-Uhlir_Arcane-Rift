@@ -8,6 +8,16 @@
 #include <string>
 #include "player_input.hpp"
 
+struct PlayerProfile
+{
+    std::string nickname = "Player";
+
+    int matches_played = 0;
+    int total_kills = 0;
+    int total_deaths = 0;
+    int best_match_kills = 0;
+};
+
 struct GameSettings
 {
     enum class Team
@@ -50,6 +60,8 @@ struct GameSettings
     int team_limit = 10;
 
     Team last_winner_team = Team::Spectator;
+
+    PlayerProfile profile;
 };
 
 

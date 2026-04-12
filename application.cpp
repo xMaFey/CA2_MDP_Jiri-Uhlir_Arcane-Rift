@@ -12,6 +12,7 @@
 #include "settings_state.hpp"
 #include "game_over_state.hpp"
 #include "team_select_state.hpp"
+#include "profile_data.hpp"
 #include <fstream>
 #include <iostream>
 
@@ -52,6 +53,20 @@ Application::Application()
 		}
 
 		std::cout << "Connecting to: " << m_settings.server_ip << ":" << m_settings.server_port << "\n";
+
+		// Load persistent local profile for this PC.
+		if (ProfileData::Load(m_settings.profile))
+		{
+			m_settings.nickname = m_settings.profile.nickname;
+			std::cout << "Loaded profile for nickname: " << m_settings.nickname << "\n";
+		}
+		else
+		{
+			// First launch fallback.
+			m_settings.profile.nickname = m_settings.nickname;
+			ProfileData::Save(m_settings.profile);
+			std::cout << "No profile found, created default profile\n";
+		}
 
 	m_fonts.Load(FontID::kMain, "Media/Fonts/Sansation.ttf");
 	m_textures.Load(TextureID::kEagle, "Media/Textures/Eagle.png");
