@@ -44,5 +44,5 @@ void SoundPlayer::Play(SoundID id)
     m_sounds.back().play();
 
     // DEBUG
-    std::cout << "Play soud id:" << (int)id << "\n";
+    std::cout << "Play sound id:" << (int)id << "\n";
 }

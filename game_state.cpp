@@ -332,8 +332,14 @@ void GameState::draw_player_name(sf::RenderTarget& target, const PlayerSlot& pla
 
     // White text with black outline so it stays readable.
     nameText.setFillColor(sf::Color::White);
-    nameText.setOutlineColor(sf::Color::Black);
     nameText.setOutlineThickness(2.f);
+
+    if (player.team == GameSettings::Team::Fire)
+        nameText.setOutlineColor(sf::Color(200, 80, 40));
+    else if (player.team == GameSettings::Team::Water)
+        nameText.setOutlineColor(sf::Color(60, 140, 220));
+    else
+        nameText.setOutlineColor(sf::Color::Black);
 
     // Position slightly above the player sprite/body.
     const sf::Vector2f pos = player.entity.position();
@@ -1643,10 +1649,15 @@ bool GameState::Update(sf::Time dt)
 
     ss << "Fire: " << m_fire_kills
         << "   |   Water: " << m_water_kills
-        << "   (First to " << m_kills_to_win << ")\n"
-        << "You: " << localName << " [" << localTeam << "]\n"
-        << "Pending switch: " << pendingText << "\n"
-        << "Others: " << otherSummary;
+        << "   |   First to " << m_kills_to_win << "\n"
+        << "You: " << localName << " [" << localTeam << "]";
+
+    if (pendingText != "None")
+    {
+        ss << "\nPending: " << pendingText;
+    }
+
+    ss << "\nOthers: " << otherSummary;
 
     m_hud.setString(ss.str());
 
@@ -1755,21 +1766,24 @@ void GameState::rebuild_pause_layout(sf::Vector2u new_size)
     m_pause_title.setPosition({ viewSize.x * 0.5f, viewSize.y * 0.18f });
 
     Utility::CentreOrigin(m_pause_options);
-    m_pause_options.setPosition({ viewSize.x * 0.5f, viewSize.y * 0.28f });
+    m_pause_options.setPosition({ viewSize.x * 0.5f, viewSize.y * 0.30f });
+
+    const float buttonX = viewSize.x * 0.5f - 100.f;
+    const float startY = viewSize.y * 0.43f;
+    const float gap = viewSize.y * 0.08f;
 
     if (m_pause_fire_button)
-        m_pause_fire_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.42f });
+        m_pause_fire_button->setPosition({ buttonX, startY });
 
     if (m_pause_water_button)
-        m_pause_water_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.50f });
+        m_pause_water_button->setPosition({ buttonX, startY + gap });
 
     if (m_pause_spectate_button)
-        m_pause_spectate_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.58f });
+        m_pause_spectate_button->setPosition({ buttonX, startY + gap * 2.f });
 
     if (m_pause_back_to_menu_button)
-        m_pause_back_to_menu_button->setPosition({ viewSize.x * 0.5f - 100.f, viewSize.y * 0.68f });
+        m_pause_back_to_menu_button->setPosition({ buttonX, startY + gap * 3.2f });
 
-    // Keep the visible camera size in sync with the window size.
     m_world_view.setSize(viewSize);
 }
 

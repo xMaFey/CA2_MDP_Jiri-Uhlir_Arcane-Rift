@@ -561,38 +561,38 @@ static float len2(sf::Vector2f v)
 }
 
 // segment vs rect collision
-static bool segment_intersect_rect(sf::Vector2f a, sf::Vector2f b, const sf::FloatRect& r)
-{
-    // Liang-Barsky algorithm
-    const float dx = b.x - a.x;
-    const float dy = b.y - a.y;
-
-    float t0 = 0.f, t1 = 1.f;
-
-    auto clip = [&](float p, float q) -> bool
-    {
-        if (p == 0.f)
-            return q >= 0.f;
-        const float t = q / p;
-        if (p < 0.f) {
-            if (t > t1) return false;
-            if (t > t0) t0 = t;
-        }
-        else
-        {
-            if (t < t0) return false;
-            if (t < t1) t1 = t;
-        }
-        return true;
-    };
-
-	if (!clip(-dx, a.x - r.position.x)) return false;
-	if (!clip(dx, (r.position.x + r.size.x) - a.x)) return false;
-	if (!clip(-dy, a.y - r.position.y)) return false;
-    if (!clip(dy, (r.position.y + r.size.y) - a.y)) return false;
-
-    return true;
-}
+//static bool segment_intersect_rect(sf::Vector2f a, sf::Vector2f b, const sf::FloatRect& r)
+//{
+//    // Liang-Barsky algorithm
+//    const float dx = b.x - a.x;
+//    const float dy = b.y - a.y;
+//
+//    float t0 = 0.f, t1 = 1.f;
+//
+//    auto clip = [&](float p, float q) -> bool
+//    {
+//        if (p == 0.f)
+//            return q >= 0.f;
+//        const float t = q / p;
+//        if (p < 0.f) {
+//            if (t > t1) return false;
+//            if (t > t0) t0 = t;
+//        }
+//        else
+//        {
+//            if (t < t0) return false;
+//            if (t < t1) t1 = t;
+//        }
+//        return true;
+//    };
+//
+//	if (!clip(-dx, a.x - r.position.x)) return false;
+//	if (!clip(dx, (r.position.x + r.size.x) - a.x)) return false;
+//	if (!clip(-dy, a.y - r.position.y)) return false;
+//    if (!clip(dy, (r.position.y + r.size.y) - a.y)) return false;
+//
+//    return true;
+//}
 
 bool PlayerEntity::bullet_hits_hurtbox(sf::Vector2f point, float radius) const
 {

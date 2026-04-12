@@ -7,6 +7,7 @@
 #include "state.hpp"
 #include <SFML/Graphics/Sprite.hpp>
 #include "container.hpp"
+#include "button.hpp"
 
 class MenuState : public State
 {
@@ -22,5 +23,10 @@ public:
 private:
 	sf::Sprite m_background_sprite;
 	gui::Container m_gui_container;
+
+	gui::Button::Ptr m_host_button;
+	gui::Button::Ptr m_join_button;
+	gui::Button::Ptr m_settings_button;
+	gui::Button::Ptr m_exit_button;
 };
 
