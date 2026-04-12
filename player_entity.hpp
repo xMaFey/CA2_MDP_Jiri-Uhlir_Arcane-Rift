@@ -50,6 +50,10 @@ public:
     void respawn(sf::Vector2f p);
     bool is_invulnerable() const { return m_invulnerable; }
 
+    // Networking helpers for respawn blink / spawn protection.
+    sf::Time invulnerable_elapsed() const { return m_invulnerable_time; }
+    void set_invulnerability_state(bool active, sf::Time elapsed);
+
     // Wall colision
     static bool circle_rect_intersect(const sf::CircleShape& c, const sf::RectangleShape& r);
 

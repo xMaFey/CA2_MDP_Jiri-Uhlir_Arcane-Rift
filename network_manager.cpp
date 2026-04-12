@@ -109,7 +109,9 @@ namespace
             << p.connected
             << p.has_pending_team_change
             << p.pending_team
-            << p.anim_state;
+            << p.anim_state
+            << p.invulnerable
+            << p.invulnerable_time_seconds;
     }
 
     sf::Packet& operator>>(sf::Packet& packet, PlayerNetState& p)
@@ -123,7 +125,9 @@ namespace
             >> p.connected
             >> p.has_pending_team_change
             >> p.pending_team
-            >> p.anim_state;
+            >> p.anim_state
+            >> p.invulnerable
+            >> p.invulnerable_time_seconds;
     }
 
     sf::Packet& operator<<(sf::Packet& packet, const SoundEventState& s)

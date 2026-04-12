@@ -81,6 +81,11 @@ struct PlayerNetState
     // current visual animation state of this player
     // 0 = Idle, 1 = Run, 2 = Shoot
     int anim_state = 0;
+
+    // Spawn protection / respawn blink state.
+    // Sent by host so clients can blink in sync too.
+    bool invulnerable = false;
+    float invulnerable_time_seconds = 0.f;
 };
 
 struct BulletState

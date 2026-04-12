@@ -1387,6 +1387,11 @@ bool GameState::Update(sf::Time dt)
                 // tell clients which animation this player is currently using
                 netPlayer.anim_state = p.entity.get_net_anim_state();
 
+                // Send respawn blink / spawn protection too,
+                // so clients can render invulnerability correctly.
+                netPlayer.invulnerable = p.entity.is_invulnerable();
+                netPlayer.invulnerable_time_seconds = p.entity.invulnerable_elapsed().asSeconds();
+
                 baseState.players.push_back(netPlayer);
             }
 
@@ -1488,6 +1493,13 @@ bool GameState::Update(sf::Time dt)
                     // Store replicated animation info from the host.
                     localSlot->replicated_anim_state = netPlayer.anim_state;
                     localSlot->replicated_dir = netPlayer.dir;
+
+                    // Copy host invulnerability state too,
+                    // so respawn blinking is visible on clients.
+                    localSlot->entity.set_invulnerability_state(
+                        netPlayer.invulnerable,
+                        sf::seconds(netPlayer.invulnerable_time_seconds)
+                    );
 
                     // Apply pending switch state from host snapshot too.
                     localSlot->has_pending_team_change = netPlayer.has_pending_team_change;

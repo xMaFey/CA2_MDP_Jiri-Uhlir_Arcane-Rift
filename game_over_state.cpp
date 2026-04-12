@@ -60,11 +60,12 @@ GameOverState::GameOverState(StateStack& stack, Context context)
     Utility::CentreOrigin(m_title);
     m_title.setPosition({ view_size.x / 2.f, view_size.y / 3.f });
 
-	m_hint.setString("Press Enter to play again, or Escape for menu");
+	//m_hint.setString("Press Enter to play again, or Escape for menu");
 	m_hint.setCharacterSize(24);
     m_hint.setFillColor(sf::Color::White);
     m_hint.setOutlineThickness(2.f);
 	m_hint.setOutlineColor(sf::Color::Black);
+
 	Utility::CentreOrigin(m_hint);
 	m_hint.setPosition({ view_size.x * 0.5f, view_size.y * 0.38f });
 

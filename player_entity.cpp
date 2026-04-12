@@ -522,15 +522,36 @@ bool PlayerEntity::consume_shot_event()
 
 void PlayerEntity::respawn(sf::Vector2f p)
 {
-    m_body.setPosition(p);
+    // Move whole entity to the respawn point.
+    set_position(p);
     m_velocity = { 0.f, 0.f };
 
+    // Start spawn protection and blink timer from zero.
     m_invulnerable = true;
     m_invulnerable_time = sf::Time::Zero;
 
-	// reset dash / melee states
+    // Reset dash state after death / respawn.
     m_is_dashing = false;
-	m_dash_time = sf::Time::Zero;
+    m_dash_time = sf::Time::Zero;
+}
+
+void PlayerEntity::set_invulnerability_state(bool active, sf::Time elapsed)
+{
+    // Used by clients to copy the host's respawn protection state.
+    m_invulnerable = active;
+
+    if (m_invulnerable)
+    {
+        m_invulnerable_time = elapsed;
+
+        // Safety clamp in case packet timing is slightly off.
+        if (m_invulnerable_time > m_invulnerable_duration)
+            m_invulnerable_time = m_invulnerable_duration;
+    }
+    else
+    {
+        m_invulnerable_time = sf::Time::Zero;
+    }
 }
 
 
