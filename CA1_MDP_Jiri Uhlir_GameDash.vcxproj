@@ -178,6 +178,7 @@ echo ===== POST BUILD END =====</Command>
     <ClCompile Include="network_manager.cpp" />
     <ClCompile Include="player_entity.cpp" />
     <ClCompile Include="player_input.cpp" />
+    <ClCompile Include="profile_data.cpp" />
     <ClCompile Include="settings_state.cpp" />
     <ClCompile Include="sound_id.cpp" />
     <ClCompile Include="sound_player.cpp" />
@@ -207,6 +208,7 @@ echo ===== POST BUILD END =====</Command>
     <ClInclude Include="network_packets.hpp" />
     <ClInclude Include="player_entity.hpp" />
     <ClInclude Include="player_input.hpp" />
+    <ClInclude Include="profile_data.hpp" />
     <ClInclude Include="resource_holder.hpp" />
     <ClInclude Include="resource_identifiers.hpp" />
     <ClInclude Include="settings_state.hpp" />

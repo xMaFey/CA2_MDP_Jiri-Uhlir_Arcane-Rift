@@ -1383,17 +1383,6 @@ bool GameState::Update(sf::Time dt)
                         if (targetPlayer.id == 0)
                             add_local_death();
                     }
-                    else if (settings.network_role == GameSettings::NetworkRole::Client)
-                    {
-                        if (m_local_player_id >= 0)
-                        {
-                            if (shooter->id == m_local_player_id)
-                                add_local_kill();
-
-                            if (targetPlayer.id == m_local_player_id)
-                                add_local_death();
-                        }
-                    }
                     else
                     {
                         // Offline mode: local player is id 0.

@@ -108,6 +108,9 @@
     <ClCompile Include="network_manager.cpp">
       <Filter>Core\Network Files</Filter>
     </ClCompile>
+    <ClCompile Include="profile_data.cpp">
+      <Filter>Core\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="title_state.hpp">
@@ -205,6 +208,9 @@
     </ClInclude>
     <ClInclude Include="network_packets.hpp">
       <Filter>Core\Network Files</Filter>
+    </ClInclude>
+    <ClInclude Include="profile_data.hpp">
+      <Filter>Core\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

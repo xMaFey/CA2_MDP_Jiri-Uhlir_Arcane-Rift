@@ -44,7 +44,6 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     m_mode_text.setPosition({ view_size.x * 0.5f, view_size.y * 0.18f });
 
     m_name_text.setCharacterSize(28);
-    m_name_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.25f });
 
     // Click this box to start typing nickname.
     m_name_box.setSize({ 320.f, 42.f });
@@ -252,6 +251,7 @@ TeamSelectState::TeamSelectState(StateStack& stack, Context context)
     update_button_states();
 
     rebuild_layout(context.window->getSize());
+    refresh_text();
 }
 
 bool TeamSelectState::can_join_fire_locally() const
@@ -378,6 +378,17 @@ void TeamSelectState::refresh_text()
 
     const std::string shownName = m_nickname.empty() ? "Player" : m_nickname;
     m_name_text.setString("Nickname: " + shownName + (m_name_editing ? "_" : ""));
+
+    // Keep nickname text aligned nicely inside the input box.
+    const sf::FloatRect textBounds = m_name_text.getLocalBounds();
+    const sf::Vector2f boxPos = m_name_box.getPosition();
+    const sf::Vector2f boxSize = m_name_box.getSize();
+
+    // Small left padding + visual vertical centering inside the box.
+    m_name_text.setPosition({
+        boxPos.x + 14.f,
+        boxPos.y + (boxSize.y - textBounds.size.y) * 0.5f - textBounds.position.y - 2.f
+        });
 
     if (m_name_editing)
         m_name_box.setOutlineColor(sf::Color(255, 220, 120));
@@ -646,7 +657,7 @@ bool TeamSelectState::Update(sf::Time)
         {
             JoinInfoPacket joinInfo;
             joinInfo.player_id = -1;
-            joinInfo.nickname = m_nickname;
+            joinInfo.nickname = m_nickname.empty() ? "Player" : m_nickname;
 
             if (settings.chosen_team == GameSettings::Team::Fire)
                 joinInfo.team = static_cast<int>(NetTeam::Fire);
@@ -829,7 +840,6 @@ void TeamSelectState::rebuild_layout(sf::Vector2u new_size)
 
     m_title.setPosition({ view_size.x * 0.5f, view_size.y * 0.12f });
     m_mode_text.setPosition({ view_size.x * 0.5f, view_size.y * 0.18f });
-    m_name_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.25f });
     m_fire_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.36f });
     m_water_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.44f });
     m_players_text.setPosition({ view_size.x * 0.28f, view_size.y * 0.52f });
@@ -856,4 +866,5 @@ void TeamSelectState::rebuild_layout(sf::Vector2u new_size)
 void TeamSelectState::OnResize(sf::Vector2u new_size)
 {
     rebuild_layout(new_size);
+    refresh_text();
 }
