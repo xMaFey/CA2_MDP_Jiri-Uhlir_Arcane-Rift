@@ -405,7 +405,7 @@ void PlayerEntity::draw(sf::RenderTarget& target) const
     }
 
     // debug draw collision body
-    target.draw(m_body);
+    //target.draw(m_body);
 
     if (m_sprite) {
         target.draw(*m_sprite);

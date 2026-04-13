@@ -118,7 +118,7 @@ GameState::GameState(StateStack& stack, Context context)
     GetContext().music->Stop();
 
     // Networking should already be running if we came here from the lobby.
-// Reuse the existing host/client connection instead of reconnecting.
+    // Reuse the existing host/client connection instead of reconnecting.
     if (GetContext().network)
     {
         auto& network = *GetContext().network;

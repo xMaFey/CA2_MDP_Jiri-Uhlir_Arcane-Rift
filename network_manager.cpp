@@ -616,9 +616,9 @@ bool NetworkManager::send_world_state_to_player(int player_id, const WorldStateP
         sf::Packet packet = make_typed_packet(PacketType::WorldState);
         packet << state;
 
-        // DEBUG: print the real serialized packet size in bytes.
-        std::cout << "[SERVER] WorldState packet to player " << player_id
-            << ": " << packet.getDataSize() << " bytes\n";
+        //// DEBUG: print the real serialized packet size in bytes.
+        //std::cout << "[SERVER] WorldState packet to player " << player_id
+        //    << ": " << packet.getDataSize() << " bytes\n";
 
         return client.socket->send(packet) == sf::Socket::Status::Done;
     }

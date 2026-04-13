@@ -120,7 +120,7 @@ private:
 
     int m_fire_kills = 0;
     int m_water_kills = 0;
-    const int m_kills_to_win = 3;
+    const int m_kills_to_win = 50;
 
     std::unique_ptr<HostSession> m_host_session;
     std::unique_ptr<ClientSession> m_client_session;

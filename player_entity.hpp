@@ -109,7 +109,7 @@ private:
     float m_speed = 200.f;
 
     // shooting cooldown
-    sf::Time m_shoot_cd = sf::seconds(0.2f);
+    sf::Time m_shoot_cd = sf::seconds(0.5f);
     sf::Time m_shoot_timer = sf::Time::Zero;
 
     // controls
